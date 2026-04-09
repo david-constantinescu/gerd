@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Food log</h2>
+  <ul id="food-list" class="timeline"></ul>
+</section>
+
+<section class="card">
+  <h2>Food risk table</h2>
+  <p class="muted">Edit these to match your personal triggers.</p>
+  <table id="foods-table" class="grid">
+    <thead><tr><th>Food</th><th>Risk</th><th>Upright (h)</th><th></th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="row">
+    <input id="new-food" placeholder="food name" />
+    <select id="new-risk"><option>LOW</option><option>MEDIUM</option><option>HIGH</option></select>
+    <input id="new-hours" type="number" step="0.5" value="2.5" />
+    <button onclick="addFood()">+ Add</button>
+  </div>
+</section>
+{% endblock %}

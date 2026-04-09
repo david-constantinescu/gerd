@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reflux-sentinel"
+version = "0.1.0"
+description = "Offline GERD wearable firmware + Flask PWA for Raspberry Pi Zero 2 W"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "David Constantinescu" }]
+dependencies = [
+    "flask>=3.0",
+    "pillow>=10.0",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+# Pi-only — install with `pip install -e ".[pi]"` on the device
+pi = [
+    "RPi.GPIO>=0.7",
+    "smbus2>=0.4",
+    "luma.oled>=3.12",
+    "tflite-runtime>=2.14; platform_machine=='aarch64'",
+    "watchdog>=4.0",
+    "gunicorn>=21.2",
+]
+# Dev tools — install with `pip install -e ".[dev]"` on Mac
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+sentinel = "sentinel.main:main"
+sentinel-web = "sentinel.web.app:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sentinel = ["web/templates/*.html", "web/static/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

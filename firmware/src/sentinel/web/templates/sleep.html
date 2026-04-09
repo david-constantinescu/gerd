@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Last night</h2>
+  <div id="sleep-summary">Loading…</div>
+  <div class="stack-bar" id="sleep-bar"></div>
+  <ul class="legend">
+    <li><span class="sw left"></span>Left</li>
+    <li><span class="sw right"></span>Right</li>
+    <li><span class="sw back"></span>Back</li>
+    <li><span class="sw front"></span>Front</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>History (14 nights)</h2>
+  <ul id="sleep-history" class="timeline"></ul>
+</section>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Device</h2>
+  <label>Wear side
+    <select data-setting="wear_side">
+      <option value="left"  {{ 'selected' if tunables.wear_side=='left' }}>Left</option>
+      <option value="right" {{ 'selected' if tunables.wear_side=='right' }}>Right</option>
+      <option value="center"{{ 'selected' if tunables.wear_side=='center' }}>Center</option>
+    </select>
+  </label>
+  <label>Language
+    <select data-setting="language">
+      <option value="en" {{ 'selected' if tunables.language=='en' }}>English</option>
+      <option value="ro" {{ 'selected' if tunables.language=='ro' }}>Română</option>
+    </select>
+  </label>
+  <button onclick="calibrate()">Run calibration</button>
+</section>
+
+<section class="card">
+  <h2>Alerts</h2>
+  <label>Pitch threshold (°)
+    <input type="range" min="5" max="30" value="{{ tunables.pitch_alert_deg }}" data-setting="pitch_alert_deg" />
+    <span class="slider-val"></span>
+  </label>
+  <label>Alert cooldown (s)
+    <input type="range" min="60" max="900" step="30" value="{{ tunables.alert_cooldown_seconds }}" data-setting="alert_cooldown_seconds" />
+    <span class="slider-val"></span>
+  </label>
+  <label><input type="checkbox" data-setting="voice_alerts_enabled" {{ 'checked' if tunables.voice_alerts_enabled }} /> Voice alerts</label>
+  <label><input type="checkbox" data-setting="haptic_alerts_enabled" {{ 'checked' if tunables.haptic_alerts_enabled }} /> Haptic alerts</label>
+</section>
+
+<section class="card">
+  <h2>Sleep</h2>
+  <label>Window start
+    <input type="time" value="{{ tunables.sleep_window_start }}" data-setting="sleep_window_start" />
+  </label>
+  <label>Window end
+    <input type="time" value="{{ tunables.sleep_window_end }}" data-setting="sleep_window_end" />
+  </label>
+  <label>Max nudges / night
+    <input type="range" min="0" max="6" value="{{ tunables.sleep_max_nudges }}" data-setting="sleep_max_nudges" />
+    <span class="slider-val"></span>
+  </label>
+</section>
+
+<section class="card">
+  <h2>Hotspot</h2>
+  <label>Mode
+    <select data-setting="hotspot_mode">
+      <option value="always"    {{ 'selected' if tunables.hotspot_mode=='always' }}>Always on</option>
+      <option value="scheduled" {{ 'selected' if tunables.hotspot_mode=='scheduled' }}>Scheduled</option>
+      <option value="manual"    {{ 'selected' if tunables.hotspot_mode=='manual' }}>Manual</option>
+    </select>
+  </label>
+  <label>On at   <input type="time" value="{{ tunables.hotspot_schedule_on }}"  data-setting="hotspot_schedule_on" /></label>
+  <label>Off at  <input type="time" value="{{ tunables.hotspot_schedule_off }}" data-setting="hotspot_schedule_off" /></label>
+</section>
+
+<section class="card">
+  <h2>Medications</h2>
+  <ul id="med-list"></ul>
+  <div class="row">
+    <input id="med-name" placeholder="name" />
+    <input id="med-dose" placeholder="dose" />
+    <input id="med-time" type="time" />
+    <button onclick="addMed()">+ Add</button>
+  </div>
+</section>
+{% endblock %}

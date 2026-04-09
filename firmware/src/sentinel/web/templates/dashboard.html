@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Posture</h2>
+  <div class="big" id="posture-pct">—</div>
+  <div class="bar"><div class="bar-fill" id="posture-bar" style="width:0%"></div></div>
+  <div class="row muted">
+    <span>Pitch: <b id="pitch">—</b>°</span>
+    <span>State: <b id="state">—</b></span>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Heart rate &amp; HRV</h2>
+  <div class="row">
+    <div><div class="big" id="bpm">—</div><div class="muted">bpm</div></div>
+    <div><div class="big" id="rmssd">—</div><div class="muted">ms rmssd</div></div>
+    <div><div class="big" id="stress">—</div><div class="muted">stress</div></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Last meal</h2>
+  <div id="last-meal">No meals logged yet.</div>
+</section>
+
+<section class="card actions">
+  <button onclick="logMeal()">+ Log meal</button>
+  <button onclick="logSymptom()">+ Symptom</button>
+  <button onclick="logWater()">+ Water</button>
+</section>
+
+<section class="card">
+  <h2>Today's timeline</h2>
+  <ul id="timeline" class="timeline"></ul>
+</section>
+{% endblock %}

@@ -1,0 +1,18 @@
+[Unit]
+Description=Reflux Sentinel Flask PWA
+After=network.target sentinel.service
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@DIR@
+# Port 80 needs either root or CAP_NET_BIND_SERVICE.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+ExecStart=@DIR@/.venv/bin/gunicorn -b 0.0.0.0:80 -w 2 --chdir @DIR@/firmware/src sentinel.web.app:app
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

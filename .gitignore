@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Project data
+firmware/data/sentinel.db
+firmware/data/sentinel.db-wal
+firmware/data/sentinel.db-shm
+firmware/data/config.local.json
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.claude/
+
+# Models / audio (large binaries — fetch with scripts)
+firmware/models/*.tflite
+firmware/audio/*.wav
+!firmware/audio/.gitkeep
+!firmware/models/.gitkeep
