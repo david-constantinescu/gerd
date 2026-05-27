@@ -21,7 +21,9 @@ from ..services.alerts import AlertManager
 from ..services.logger import Logger
 from ..services.meds import MedReminders
 from ..services.sleep import SleepTracker
+from .. import __version__
 from . import ui
+from .menu import SYMPTOM_SEVERITIES, SYMPTOM_TYPES, MenuState
 from .states import State, can_transition
 
 log = logging.getLogger("modes.manager")
@@ -66,6 +68,9 @@ class ModeManager:
         self.meds = meds
         self.oled = display or Display(dry_run=False, autoprobe=False)
         self.ctx = Context()
+        self.menu = MenuState()
+        self._symptom_severity_label = "1 - Mild"
+        self._symptom_type_label = "Heartburn"
         self._last_render = 0.0
         self._last_sched_tick = 0.0
         self._last_view_sig: tuple | None = None
@@ -159,19 +164,184 @@ class ModeManager:
         pattern = ev.payload.get("pattern", "")
         btn = ev.payload.get("button", "?")
         log.info("button %s: %s", btn, pattern)
-        if pattern == "long":
+        now = time.time()
+        self.menu.touch(now)
+        if btn == "a":
+            if pattern == "long":
+                self._on_a_long(now)
+            elif pattern == "verylong":
+                self._transition(State.CALIBRATING)
+                self.menu.open = True
+                self.menu.screen = "main"
+                self.menu.index = 0
+            else:
+                self._on_a_short(now)
+        elif btn == "b":
+            if pattern == "long":
+                self._on_b_long(now)
+            else:
+                self._on_b_short(now)
+        self._paint_now()
+
+    def _on_a_short(self, now: float) -> None:
+        if self.menu.open:
+            if self.menu.screen == "main" and self.menu.index == 0:
+                self.menu.close()
+            else:
+                self._menu_back()
+            return
+        if self.ctx.state == State.CALIBRATING:
+            self._transition(State.IDLE)
+
+    def _on_a_long(self, now: float) -> None:
+        if self.menu.open:
+            self.menu.close()
+            return
+        if self.ctx.state in (State.IDLE, State.POST_MEAL):
+            self.menu.open = True
+            self.menu.screen = "meal_confirm"
+            self.menu.index = 0
+            self.menu.touch(now)
+
+    def _on_b_short(self, now: float) -> None:
+        if self.menu.open:
+            if self.menu.screen == "flash":
+                return
+            self.menu.next_item()
+            return
+        if self.ctx.state in (State.IDLE, State.POST_MEAL):
+            self.menu.open_main(now)
+
+    def _on_b_long(self, now: float) -> None:
+        if self.ctx.state == State.CALIBRATING:
+            self.ctx.calibration_step = min(2, self.ctx.calibration_step + 1)
+            if self.ctx.calibration_step >= 2:
+                self.ctx.calibration_baseline_pitch = self.ctx.pitch
+                self._transition(State.IDLE)
+                self.menu.close()
+            return
+        if self.menu.screen == "flash":
+            self.menu.close()
+            return
+        if not self.menu.open:
+            return
+        action = self.menu.current_action()
+        if action:
+            self._menu_action(action, now)
+
+    def _menu_back(self) -> None:
+        parent = {
+            "meal_confirm": "main",
+            "food_photo": "meal_confirm",
+            "food_result": "food_photo",
+            "symptom_severity": "main",
+            "symptom_type": "symptom_severity",
+            "symptom_saved": "main",
+            "meal_saved": "main",
+            "med_prompt": "main",
+            "med_ack": "main",
+            "settings": "main",
+            "about": "main",
+        }
+        if self.menu.screen == "main":
+            self.menu.close()
+            return
+        nxt = parent.get(self.menu.screen, "main")
+        self.menu.screen = nxt
+        self.menu.index = 0
+        if nxt == "main":
+            self.menu.open = True
+
+    def _menu_action(self, action: str, now: float) -> None:
+        if action == "meal":
+            self.menu.screen = "meal_confirm"
+            self.menu.index = 0
+        elif action == "meal_yes":
             self._log_meal()
-        elif pattern == "verylong":
-            self._transition(State.CALIBRATING)
-        elif pattern == "single":
-            self.db.event("symptom", {"severity": 1})
-            if self.ctx.state in (State.IDLE, State.POST_MEAL):
-                self._transition(State.FOOD_PHOTO)
-                self._run_food_photo()
-        elif pattern == "double":
-            self.db.event("symptom", {"severity": 2})
-        elif pattern == "triple":
-            self.db.event("symptom", {"severity": 3})
+            self.menu.screen = "food_photo"
+            self.menu.index = 0
+        elif action == "meal_no":
+            self.menu.close()
+        elif action == "symptom":
+            self.menu.screen = "symptom_severity"
+            self.menu.index = 0
+        elif action.startswith("symptom_type_"):
+            idx = int(action.rsplit("_", 1)[-1])
+            self._save_symptom(self.menu.symptom_severity + 1, idx, now)
+        elif action.startswith("symptom_"):
+            sev = int(action.split("_")[1])
+            self.menu.symptom_severity = sev - 1
+            self.menu.screen = "symptom_type"
+            self.menu.index = 0
+        elif action == "med_ack":
+            name = self.menu.pending_med
+            if name:
+                self.meds.acknowledge(name)
+            self.menu.screen = "med_ack"
+            self.menu.flash_until = now + 2.0
+        elif action == "med":
+            self.menu.screen = "settings"
+            self.menu.index = 0
+        elif action == "settings":
+            self.menu.screen = "settings"
+            self.menu.index = 0
+        elif action == "sleep":
+            self.menu.close()
+            self._transition(State.PRE_SLEEP)
+        elif action == "about":
+            self.menu.screen = "about"
+            self.menu.index = 0
+        elif action == "food_capture":
+            self._capture_food(now)
+        elif action == "food_skip":
+            self.menu.screen = "meal_saved"
+            self.menu.flash_until = now + 2.5
+        elif action == "food_confirm":
+            self.menu.close()
+            if self.ctx.state == State.FOOD_PHOTO:
+                self._transition(State.POST_MEAL if self.ctx.meal_started_at else State.IDLE)
+        elif action == "food_retry":
+            self.menu.screen = "food_photo"
+            self.menu.index = 0
+
+    def _save_symptom(self, severity: int, type_idx: int, now: float) -> None:
+        self._symptom_severity_label = SYMPTOM_SEVERITIES[severity - 1]
+        self._symptom_type_label = SYMPTOM_TYPES[type_idx]
+        self.db.event(
+            "symptom",
+            {
+                "severity": severity,
+                "type": self._symptom_type_label,
+            },
+        )
+        self.bus.publish(
+            Event(
+                EventType.SYMPTOM_LOGGED,
+                payload={"severity": severity, "type": self._symptom_type_label},
+            )
+        )
+        self.menu.screen = "symptom_saved"
+        self.menu.flash_until = now + 2.5
+
+    def _capture_food(self, now: float) -> None:
+        self.menu.screen = "food_analysing"
+        self._paint_now()
+        self._transition(State.FOOD_PHOTO)
+        self._run_food_photo()
+        self.menu.open = True
+        self.menu.screen = "food_result"
+        self.menu.index = 0
+        self.menu.touch(now)
+
+    def _handle_med_reminder(self, ev: Event) -> None:
+        name = ev.payload.get("name", "Medication")
+        self.menu.open = True
+        self.menu.screen = "med_prompt"
+        self.menu.pending_med = name
+        self.menu.pending_med_time = datetime.now().strftime("%H:%M")
+        self.menu.index = 0
+        self.menu.touch(time.time())
+        self._paint_now()
 
     def _log_meal(self, notes: str = "") -> None:
         self.ctx.meal_started_at = time.time()
@@ -258,19 +428,26 @@ class ModeManager:
 
     def _view_signature(self, state: State, ctx: dict) -> tuple:
         """Stable key for deciding whether the TFT needs a new frame."""
-        return (
+        base = (
             state.value,
             datetime.now().strftime("%H:%M"),
             ctx.get("battery_text"),
-            int(ctx.get("posture_pct", 0) // 10) * 10,  # 10% buckets
-            int(round(ctx.get("pitch", 0) / 5.0) * 5),  # 5° buckets
+            int(ctx.get("posture_pct", 0) // 10) * 10,
+            int(round(ctx.get("pitch", 0) / 5.0) * 5),
             ctx.get("alert_active"),
             ctx.get("level"),
             ctx.get("meal_age_bucket"),
-            int(ctx.get("progress", 0.0) * 10),  # 10% buckets
+            int(ctx.get("progress", 0.0) * 10),
             ctx.get("name"),
             ctx.get("risk"),
         )
+        if ctx.get("menu_open"):
+            return base + (
+                ctx.get("menu_screen"),
+                ctx.get("menu_index"),
+                ctx.get("menu_flash"),
+            )
+        return base
 
     def _view_ctx(self) -> dict:
         meal = self.db.last_meal()
@@ -317,7 +494,26 @@ class ModeManager:
             "step": ["Stand upright", "Lean forward", "Lie on left"][
                 min(2, self.ctx.calibration_step)
             ],
+            "version": __version__,
+            "symptom_severity_label": self._symptom_severity_label,
+            "symptom_type_label": self._symptom_type_label,
+            "meal_window_text": (
+                f"{int(TUNABLES.post_meal_default_hours)}h "
+                f"{int((TUNABLES.post_meal_default_hours % 1) * 60):02d}m"
+            ),
+            "analyse_progress": 0.65,
+            **self.menu.to_ctx(),
         }
+
+    def _paint_now(self) -> None:
+        state = State.IDLE if self._display_demo else self.ctx.state
+        view = self._view_ctx()
+        try:
+            ui.render(state, view, self.oled)
+            self._last_render = time.time()
+            self._last_view_sig = self._view_signature(state, view)
+        except Exception as e:  # pragma: no cover
+            log.warning("render failed: %s", e)
 
     # -------------------------------------------------- main loop
 
@@ -345,6 +541,8 @@ class ModeManager:
                     self._handle_power(ev)
                 elif ev.type == EventType.BUTTON_PRESS:
                     self._handle_button(ev)
+                elif ev.type == EventType.MED_REMINDER:
+                    self._handle_med_reminder(ev)
                 elif ev.type == EventType.SHUTDOWN:
                     break
 
@@ -357,6 +555,13 @@ class ModeManager:
                 self.meds.tick()
                 self._maybe_exit_post_meal()
                 self._maybe_enter_sleep()
+                if self.menu.idle_expired(now):
+                    self.menu.close()
+                if self.menu.screen == "flash" and now > self.menu.flash_until:
+                    self.menu.close()
+                elif self.menu.screen in ("symptom_saved", "meal_saved", "med_ack"):
+                    if now > self.menu.flash_until:
+                        self.menu.close()
 
             # Full-frame SPI refresh only when content meaningfully changes, and
             # at most once per DISPLAY_MIN_REFRESH_SECONDS (clock via minute in sig).
@@ -368,7 +573,10 @@ class ModeManager:
             if changed and self._last_view_sig is not None:
                 prev = self._last_view_sig
                 urgent = prev[0] != sig[0] or prev[5] != sig[5]  # FSM state or slouch alert
-            interval_ok = now - self._last_render >= DISPLAY_MIN_REFRESH_SECONDS
+            interval_ok = (
+                self.menu.open
+                or now - self._last_render >= DISPLAY_MIN_REFRESH_SECONDS
+            )
             if changed and (interval_ok or urgent):
                 self._last_render = now
                 self._last_view_sig = sig

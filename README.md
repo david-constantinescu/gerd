@@ -3,9 +3,9 @@
 An offline, waist-worn wearable for people with GERD / acid reflux. Runs on a
 Raspberry Pi Zero 2 W.
 
-> Reference docs (Romanian + English) live in `reference docs/`. They describe
-> the full hardware spec, the OLED menu structure, the webapp menus and the
-> staged scaling roadmap. Start there if you want context.
+> Reference docs live in `reference docs/`. Start with
+> [`oled-mockups.md`](reference%20docs/oled-mockups.md) for on-device UI layout and
+> **two-button** controls (GPIO 20 / 21 — no rotary encoder).
 
 ## What it does
 

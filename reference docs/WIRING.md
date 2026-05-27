@@ -37,11 +37,12 @@ dtoverlay=hifiberry-dac
 
 | Device          | Pin (BCM) | Notes                                    |
 |-----------------|-----------|------------------------------------------|
-| Button          | 4         | internal pull-up, no external resistor   |
-| Encoder CLK     | 17        | **10 nF cap to GND required**            |
-| Encoder DT      | 27        | **10 nF cap to GND required**            |
-| Encoder SW      | 22        | internal pull-up                         |
+| Button A (back) | 20        | active low, internal pull-up             |
+| Button B (menu) | 21        | active low, internal pull-up             |
 | Vibration motor | 5         | via 2N2222 base + 1N4001 flyback diode   |
+| LiPo alert      | 4         | Pimoroni Zero LiPo (active low)          |
+
+No rotary encoder on this build. UI controls: see `oled-mockups.md`.
 
 ## USB camera
 

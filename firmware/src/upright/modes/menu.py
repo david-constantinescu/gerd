@@ -1,62 +1,121 @@
-"""On-device menu navigation (OLED menu PDF).
-
-Encoder click opens the main menu from the watch face; encoder rotation scrolls;
-button A goes back; button B confirms the highlighted item when a menu is open.
-"""
+"""Two-button menu navigation — see reference docs/oled-mockups.md."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 MAIN_ITEMS: list[tuple[str, str]] = [
     ("Log Meal", "meal"),
     ("Log Symptom", "symptom"),
     ("Medication", "med"),
     ("Settings", "settings"),
+    ("Sleep Mode", "sleep"),
     ("About", "about"),
 ]
+
+SYMPTOM_SEVERITIES: list[str] = [
+    "1 - Mild",
+    "2 - Moderate",
+    "3 - Severe",
+]
+
+SYMPTOM_TYPES: list[str] = [
+    "Heartburn",
+    "Regurgitation",
+    "Bloating",
+    "Chest pain",
+    "Other",
+]
+
+MENU_IDLE_SECONDS = 30.0
 
 
 @dataclass
 class MenuState:
     open: bool = False
-    screen: str = "main"  # main | meal_confirm | symptom | med | settings | about
+    screen: str = "main"
     index: int = 0
     confirm_yes: bool = True
-    symptom_severity: int = 1  # 1=mild, 2=moderate, 3=severe
+    food_skip: bool = False
+    symptom_severity: int = 0
+    symptom_type: int = 0
     pending_med: str = ""
+    pending_med_time: str = ""
+    flash_until: float = 0.0
+    flash_message: str = ""
+    last_input: float = field(default_factory=lambda: 0.0)
+
+    def touch(self, now: float) -> None:
+        self.last_input = now
+
+    def idle_expired(self, now: float) -> bool:
+        if not self.open:
+            return False
+        return now - self.last_input > MENU_IDLE_SECONDS
 
     def reset(self) -> None:
         self.open = False
         self.screen = "main"
         self.index = 0
         self.confirm_yes = True
-        self.symptom_severity = 1
+        self.food_skip = False
+        self.symptom_severity = 0
+        self.symptom_type = 0
 
-    def open_main(self) -> None:
+    def open_main(self, now: float) -> None:
         self.open = True
         self.screen = "main"
         self.index = 0
+        self.touch(now)
 
-    def scroll(self, direction: str) -> None:
-        delta = 1 if direction == "cw" else -1
+    def close(self) -> None:
+        self.reset()
+
+    def _list_len(self) -> int:
         if self.screen == "main":
-            self.index = (self.index + delta) % len(MAIN_ITEMS)
-        elif self.screen == "meal_confirm":
-            self.confirm_yes = not self.confirm_yes
-        elif self.screen == "symptom":
-            self.symptom_severity = ((self.symptom_severity - 1 + delta) % 3) + 1
-        elif self.screen in ("med", "settings", "about"):
-            pass
+            return len(MAIN_ITEMS)
+        if self.screen == "symptom_severity":
+            return len(SYMPTOM_SEVERITIES)
+        if self.screen == "symptom_type":
+            return len(SYMPTOM_TYPES)
+        if self.screen == "meal_confirm":
+            return 2
+        if self.screen == "food_photo":
+            return 2
+        if self.screen == "food_result":
+            return 2
+        return 1
+
+    def next_item(self) -> None:
+        n = self._list_len()
+        if n > 1:
+            self.index = (self.index + 1) % n
+
+    def prev_item(self) -> None:
+        n = self._list_len()
+        if n > 1:
+            self.index = (self.index - 1) % n
+
+    def flash(self, message: str, now: float, seconds: float = 2.5) -> None:
+        self.flash_message = message
+        self.flash_until = now + seconds
+        self.screen = "flash"
 
     def current_action(self) -> str | None:
         if self.screen == "main":
             return MAIN_ITEMS[self.index][1]
         if self.screen == "meal_confirm":
-            return "meal_yes" if self.confirm_yes else "meal_no"
-        if self.screen == "symptom":
-            return f"symptom_{self.symptom_severity}"
-        if self.screen == "med" and self.pending_med:
+            return "meal_yes" if self.index == 0 else "meal_no"
+        if self.screen == "symptom_severity":
+            return f"symptom_{self.index + 1}"
+        if self.screen == "symptom_type":
+            return f"symptom_type_{self.index}"
+        if self.screen == "food_photo":
+            return "food_capture" if self.index == 0 else "food_skip"
+        if self.screen == "food_result":
+            return "food_confirm" if self.index == 0 else "food_retry"
+        if self.screen == "med_prompt" and self.pending_med:
             return "med_ack"
         return None
 
@@ -66,6 +125,9 @@ class MenuState:
             "menu_screen": self.screen,
             "menu_index": self.index,
             "menu_confirm_yes": self.confirm_yes,
-            "menu_symptom_severity": self.symptom_severity,
             "menu_pending_med": self.pending_med,
+            "menu_pending_med_time": self.pending_med_time,
+            "menu_flash": self.flash_message if self.screen == "flash" else "",
+            "menu_symptom_severity": self.symptom_severity,
+            "menu_symptom_type": self.symptom_type,
         }

@@ -1,4 +1,4 @@
-"""OLED / ST7735R screen renderers, one per FSM state."""
+"""TFT renderers — native resolution, mockup structure, pre-menu text clarity."""
 
 from __future__ import annotations
 
@@ -6,216 +6,304 @@ from datetime import datetime
 
 from PIL import Image, ImageDraw
 
+from . import menu as menu_mod
+from . import ui_theme as theme
 from .states import State
 
-# High-contrast TFT palette (readability over aesthetics).
-_C_BG = (0, 0, 0)
-_C_FG = (255, 255, 255)
-_C_ACCENT = (220, 220, 220)
-_C_WARN = (180, 180, 180)
+_SYMPTOM_TYPES = menu_mod.SYMPTOM_TYPES
+_SYMPTOM_SEVERITIES = menu_mod.SYMPTOM_SEVERITIES
+_MAIN_ITEMS = menu_mod.MAIN_ITEMS
 
 
-def _bar_mono(d: ImageDraw.ImageDraw, x: int, y: int, w: int, h: int, frac: float) -> None:
-    frac = max(0.0, min(1.0, frac))
-    d.rectangle((x, y, x + w, y + h), outline=1)
-    fill = int(w * frac)
-    if fill > 0:
-        d.rectangle((x + 1, y + 1, x + fill, y + h - 1), fill=1)
+def _wh(ctx: dict) -> tuple[int, int]:
+    return int(ctx.get("_w", 160)), int(ctx.get("_h", 128))
 
 
-def _bar_rgb(d: ImageDraw.ImageDraw, x: int, y: int, w: int, h: int, frac: float) -> None:
-    frac = max(0.0, min(1.0, frac))
-    d.rectangle((x, y, x + w, y + h), outline=_C_FG)
-    fill = int(w * frac)
-    if fill > 0:
-        d.rectangle((x + 1, y + 1, x + fill, y + h - 1), fill=_C_ACCENT)
+def _posture_status(pct: float, alert: bool) -> str:
+    if alert:
+        return "SLOUCH"
+    if pct >= 80:
+        return "GOOD"
+    if pct >= 50:
+        return "OK"
+    return "LOW"
 
 
-def draw_idle_mono(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
     now = datetime.now().strftime("%H:%M")
+    bpm = ctx.get("bpm", "--")
     bat = ctx.get("battery_text", "--")
     posture = ctx.get("posture_pct", 0.0)
     pitch = ctx.get("pitch", 0.0)
-    last_meal = ctx.get("last_meal_text", "—")
-    d.text((0, 0), f"{now}  Bat {bat}", fill=1)
-    d.text((0, 12), "Posture:", fill=1)
-    _bar_mono(d, 56, 12, 60, 8, posture / 100.0)
-    d.text((0, 24), f"Pitch: {pitch:+.1f}", fill=1)
-    d.text((0, 36), f"Meal: {last_meal}", fill=1)
-    d.text((0, 52), "A=meal B=symptom", fill=1)
+    last_meal = ctx.get("last_meal_text", "-")
+    alert = ctx.get("alert_active", False)
+    level = ctx.get("level", 0)
+    status = _posture_status(posture, alert)
+
+    if alert:
+        d.text((4, 4), f"{now}  {status}", fill=theme._C_WARN)
+        d.text((max(4, w - 56), 4), f"{bpm}bpm", fill=theme._C_ACCENT)
+        theme.hr(d, 20, w)
+        d.text((4, 26), "Posture", fill=theme._C_FG)
+        theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
+        d.text((4, 56), f"Pitch {pitch:+.1f} deg", fill=theme._C_FG)
+        d.text((max(4, w - 48), 56), f"{int(posture)}%", fill=theme._C_FG)
+        d.text((4, 72), "Straighten up!", fill=theme._C_WARN)
+        theme.progress_bar(d, 4, 90, max(40, w - 8), 8, level / 3.0)
+        return
+
+    d.text((4, 4), now, fill=theme._C_FG)
+    d.text((52, 4), status, fill=theme._C_ACCENT)
+    d.text((max(4, w - 62), 4), f"Bat {bat}", fill=theme._C_ACCENT)
+    if bpm != "--":
+        d.text((max(4, w - 62), 16), f"{bpm} bpm", fill=theme._C_DIM)
+    theme.hr(d, 20, w)
+    d.text((4, 26), "Posture", fill=theme._C_FG)
+    theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
+    d.text((4, 56), f"Pitch {pitch:+.1f} deg", fill=theme._C_FG)
+    d.text((max(4, w - 48), 56), f"{int(posture)}%", fill=theme._C_FG)
+    d.text((4, 72), f"Meal {last_meal}", fill=theme._C_FG)
+    d.text((4, 88), "Upright OK", fill=theme._C_FG)
+    theme.footer_hint(d, "Hold A=meal  B=menu", h)
 
 
-def draw_idle_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    w = int(ctx.get("_w", 160))
-    h = int(ctx.get("_h", 128))
+def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
     now = datetime.now().strftime("%H:%M")
     bat = ctx.get("battery_text", "--")
     posture = ctx.get("posture_pct", 0.0)
-    pitch = ctx.get("pitch", 0.0)
-    last_meal = ctx.get("last_meal_text", "—")
-    d.text((4, 4), f"{now}", fill=_C_FG)
-    d.text((max(4, w - 62), 4), f"Bat {bat}", fill=_C_ACCENT)
-    d.text((4, 22), "Posture", fill=_C_FG)
-    _bar_rgb(d, 4, 36, max(20, w - 8), 10, posture / 100.0)
-    d.text((4, 52), f"Pitch {pitch:+.1f} deg", fill=_C_FG)
-    d.text((4, 68), f"Meal {last_meal}", fill=_C_FG)
-    d.text((4, max(4, h - 32)), "A meal  B symptom", fill=_C_WARN)
-
-
-def draw_alert_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    w = int(ctx.get("_w", 160))
-    now = datetime.now().strftime("%H:%M")
-    pitch = ctx.get("pitch", 0.0)
-    posture = ctx.get("posture_pct", 0.0)
-    d.text((4, 4), f"{now} SLOUCH", fill=_C_WARN)
-    _bar_rgb(d, 4, 28, max(20, w - 8), 12, posture / 100.0)
-    d.text((4, 48), f"Pitch {pitch:+.1f}", fill=_C_FG)
-    d.text((4, 68), "Straighten up!", fill=_C_WARN)
-
-
-def draw_post_meal_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    w = int(ctx.get("_w", 160))
-    now = datetime.now().strftime("%H:%M")
     remaining = ctx.get("remaining", "0:00")
     frac = ctx.get("progress", 0.0)
-    d.text((4, 4), f"{now} POST-MEAL", fill=_C_ACCENT)
-    d.text((4, 28), f"Stay up {remaining}", fill=_C_FG)
-    _bar_rgb(d, 4, 48, max(20, w - 8), 10, frac)
+    meal_at = ctx.get("meal_at_text", "-")
+
+    d.text((4, 4), f"{now}  POST-MEAL", fill=theme._C_ACCENT)
+    d.text((max(4, w - 62), 4), f"Bat {bat}", fill=theme._C_ACCENT)
+    theme.hr(d, 20, w)
+    d.text((4, 26), "Posture", fill=theme._C_FG)
+    theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
+    d.text((4, 56), f"Stay up {remaining}", fill=theme._C_FG)
+    theme.progress_bar(d, 4, 72, max(40, w - 8), 10, frac)
+    d.text((4, 90), f"Meal at {meal_at}", fill=theme._C_DIM)
+    d.text((max(4, w - 48), 40), f"{int(posture)}%", fill=theme._C_FG)
+    theme.footer_hint(d, "B=menu", h)
 
 
-def draw_system_ok_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    w = int(ctx.get("_w", 160))
-    h = int(ctx.get("_h", 128))
-    d.rectangle((0, 0, w - 1, h - 1), fill=(0, 40, 90))
-    d.text((8, 12), "UPRIGHT", fill=(255, 255, 255))
-    d.text((8, 30), "SYSTEM OK", fill=(80, 255, 120))
-    d.text((8, 50), "DISPLAY + SPI", fill=(255, 255, 0))
-    d.text((8, 64), "WEB + APP RUNNING", fill=(180, 255, 255))
-    d.text((8, 78), f"BAT {ctx.get('battery_text','--')}", fill=_C_FG)
-    d.text((8, 92), "DEMO MODE", fill=_C_WARN)
+def draw_main_menu(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "MAIN MENU", w)
+    idx = int(ctx.get("menu_index", 0))
+    y = 28
+    for i, (label, _) in enumerate(_MAIN_ITEMS):
+        prefix = "> " if i == idx else "  "
+        theme.menu_row(d, y, f"{prefix}{label}", w=w, selected=(i == idx))
+        y += 18
+        if y > h - 24:
+            break
 
 
-def draw_booting_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    w = int(ctx.get("_w", 160))
-    h = int(ctx.get("_h", 128))
-    d.text((8, max(8, h // 2 - 20)), "UPRIGHT", fill=_C_FG)
-    d.text((8, max(24, h // 2)), "starting...", fill=_C_ACCENT)
+def draw_meal_confirm(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "LOG MEAL", w)
+    d.text((4, 28), "Log meal now?", fill=theme._C_FG)
+    d.text((4, 44), f"Time: {datetime.now().strftime('%H:%M')}", fill=theme._C_DIM)
+    idx = int(ctx.get("menu_index", 0))
+    theme.menu_row(d, 64, "> Yes" if idx == 0 else "  Yes", w=w, selected=(idx == 0))
+    theme.menu_row(d, 84, "> No" if idx == 1 else "  No", w=w, selected=(idx == 1))
+    theme.footer_hint(d, "B=next  hold B=ok", h)
 
 
-def draw_idle(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    draw_idle_mono(d, ctx)
+def draw_food_photo_prompt(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "FOOD PHOTO", w)
+    d.text((4, 32), "Point camera at food", fill=theme._C_FG)
+    idx = int(ctx.get("menu_index", 0))
+    theme.menu_row(d, 56, "> Capture", w=w, selected=(idx == 0))
+    theme.menu_row(d, 76, "  Skip photo", w=w, selected=(idx == 1))
+    theme.footer_hint(d, "hold B=capture", h)
 
 
-def draw_alert(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    now = datetime.now().strftime("%H:%M")
-    level = ctx.get("level", 1)
-    pitch = ctx.get("pitch", 0.0)
-    posture = ctx.get("posture_pct", 0.0)
-    d.text((0, 0), f"{now}  SLOUCH  lvl{level}", fill=1)
-    d.text((0, 12), "Posture:", fill=1)
-    _bar_mono(d, 56, 12, 60, 8, posture / 100.0)
-    d.text((0, 24), f"Pitch: {pitch:+.1f}° lean!", fill=1)
-    d.text((0, 40), "Straighten up", fill=1)
-    _bar_mono(d, 0, 54, 120, 8, level / 3.0)
-
-
-def draw_post_meal(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    now = datetime.now().strftime("%H:%M")
-    remaining = ctx.get("remaining", "0:00")
-    frac = ctx.get("progress", 0.0)
-    meal_at = ctx.get("meal_at_text", "—")
-    d.text((0, 0), f"{now}  GOOD", fill=1)
-    d.text((0, 14), f"Stay upright: {remaining}", fill=1)
-    _bar_mono(d, 0, 28, 120, 8, frac)
-    d.text((0, 42), f"Meal at {meal_at}", fill=1)
+def draw_food_analysing(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "ANALYSING", w)
+    frac = float(ctx.get("analyse_progress", 0.5))
+    theme.progress_bar(d, 4, 36, max(40, w - 8), 12, frac)
+    d.text((4, 56), "Running model...", fill=theme._C_FG)
+    d.text((4, 72), "Please wait", fill=theme._C_DIM)
 
 
 def draw_food_result(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    name = ctx.get("name", "?")
+    w, h = _wh(ctx)
+    name = (ctx.get("name", "?") or "?")[:16]
     risk = ctx.get("risk", "?")
-    advice = ctx.get("advice", "")
-    d.text((0, 0), "FOOD ANALYSIS", fill=1)
-    d.text((0, 14), f"Detected: {name}", fill=1)
-    d.text((0, 26), f"Risk: {risk}", fill=1)
-    d.text((0, 40), advice[:21], fill=1)
-    d.text((0, 52), "Confirm   Retry", fill=1)
+    advice = (ctx.get("advice", "") or "")[:24]
+    theme.title_bar(d, "FOOD ANALYSIS", w)
+    d.text((4, 28), f"Food: {name}", fill=theme._C_FG)
+    d.text((4, 44), f"Risk: {risk}", fill=theme._C_ACCENT)
+    d.text((4, 60), advice, fill=theme._C_FG)
+    idx = int(ctx.get("menu_index", 0))
+    theme.menu_row(d, 84, "> Confirm", w=w, selected=(idx == 0))
+    theme.footer_hint(d, "hold B=confirm", h)
 
 
-def draw_sleep(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    pos = ctx.get("position", "—")
-    score = ctx.get("score", 0)
-    d.text((0, 0), "SLEEP MODE", fill=1)
-    d.text((0, 16), f"Position: {pos.upper()}", fill=1)
-    d.text((0, 30), f"Score: {score}/100", fill=1)
-    d.text((0, 50), "Goodnight", fill=1)
+def draw_meal_saved(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    d.text((4, 24), "Meal logged", fill=theme._C_FG)
+    d.text((4, 44), "Upright timer on", fill=theme._C_FG)
+    window = ctx.get("meal_window_text", "2h 30m")
+    d.text((4, 64), f"Stay up {window}", fill=theme._C_DIM)
+
+
+def draw_symptom_severity(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "LOG SYMPTOM", w)
+    d.text((4, 28), "Severity?", fill=theme._C_FG)
+    idx = int(ctx.get("menu_index", 0))
+    y = 48
+    for i, label in enumerate(_SYMPTOM_SEVERITIES):
+        theme.menu_row(
+            d, y, f"> {label}" if i == idx else f"  {label}", w=w, selected=(i == idx)
+        )
+        y += 18
+        if y > h - 20:
+            break
+
+
+def draw_symptom_type(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "SYMPTOM TYPE", w)
+    idx = int(ctx.get("menu_index", 0))
+    y = 28
+    for i, label in enumerate(_SYMPTOM_TYPES):
+        theme.menu_row(
+            d, y, f"> {label}" if i == idx else f"  {label}", w=w, selected=(i == idx)
+        )
+        y += 18
+        if y > h - 20:
+            break
+
+
+def draw_symptom_saved(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    sev = ctx.get("symptom_severity_label", "1 - Mild")
+    typ = ctx.get("symptom_type_label", "Heartburn")
+    d.text((4, 20), "Symptom logged", fill=theme._C_FG)
+    d.text((4, 40), f"Sev: {sev}", fill=theme._C_FG)
+    d.text((4, 56), f"Type: {typ}", fill=theme._C_FG)
+    d.text((4, 72), datetime.now().strftime("%H:%M"), fill=theme._C_DIM)
+
+
+def draw_med_reminder(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "MEDICATION", w)
+    name = (ctx.get("menu_pending_med", "Medication") or "")[:18]
+    when = ctx.get("menu_pending_med_time", "")
+    d.text((4, 32), name, fill=theme._C_FG)
+    d.text((4, 48), f"Due: {when}", fill=theme._C_DIM)
+    theme.footer_hint(d, "hold B=confirm", h)
+
+
+def draw_med_ack(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    name = (ctx.get("menu_pending_med", "") or "")[:18]
+    d.text((4, 24), "Med acknowledged", fill=theme._C_FG)
+    d.text((4, 44), name, fill=theme._C_FG)
+    d.text((4, 60), datetime.now().strftime("Taken %H:%M"), fill=theme._C_DIM)
+
+
+def draw_settings(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "SETTINGS", w)
+    d.text((4, 32), "Edit on phone:", fill=theme._C_FG)
+    d.text((4, 48), "192.168.1.1", fill=theme._C_ACCENT)
+    theme.footer_hint(d, "A=back", h)
+
+
+def draw_about(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "ABOUT", w)
+    d.text((4, 32), "UPRIGHT", fill=theme._C_FG)
+    d.text((4, 48), f"v{ctx.get('version', '0.1.0')}", fill=theme._C_DIM)
+    d.text((4, 64), "GERD wearable", fill=theme._C_FG)
+    theme.footer_hint(d, "A=back", h)
+
+
+def draw_flash(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    msg = (ctx.get("menu_flash", "") or "")[:24]
+    d.text((4, h // 2 - 6), msg, fill=theme._C_FG)
 
 
 def draw_calibrating(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    step = ctx.get("step", "Stand upright")
-    d.text((0, 0), "CALIBRATE", fill=1)
-    d.text((0, 16), step, fill=1)
-    d.text((0, 40), "click to capture", fill=1)
+    w, h = _wh(ctx)
+    theme.title_bar(d, "CALIBRATE", w)
+    step = (ctx.get("step", "Stand upright") or "")[:22]
+    d.text((4, 32), step, fill=theme._C_FG)
+    d.text((4, 48), "Hold still", fill=theme._C_DIM)
+    theme.footer_hint(d, "hold B=capture", h)
 
 
-def draw_booting(d: ImageDraw.ImageDraw, _ctx: dict) -> None:
-    d.text((0, 0), "UPRIGHT", fill=1)
-    d.text((0, 16), "booting…", fill=1)
-    d.text((0, 50), "v0.1", fill=1)
+def draw_booting(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    d.text((8, h // 2 - 20), "UPRIGHT", fill=theme._C_FG)
+    d.text((8, h // 2), "starting...", fill=theme._C_ACCENT)
 
 
-_RGB_DRAWERS = {
-    State.BOOTING: draw_booting_rgb,
-    State.IDLE: draw_idle_rgb,
-    State.POST_MEAL: draw_post_meal_rgb,
-    State.CALIBRATING: draw_calibrating,
-    State.ONBOARDING: draw_calibrating,
-    State.FOOD_PHOTO: draw_food_result,
-    State.PRE_SLEEP: draw_sleep,
-    State.SLEEPING: draw_sleep,
-}
+def draw_sleep(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "SLEEP MODE", w)
+    pos = (ctx.get("position", "-") or "-").upper()
+    d.text((4, 32), f"Position: {pos}", fill=theme._C_FG)
+    d.text((4, 48), "Goodnight", fill=theme._C_DIM)
 
-_DRAWERS = {
-    State.BOOTING: draw_booting,
-    State.ONBOARDING: draw_calibrating,
-    State.IDLE: draw_idle,
-    State.POST_MEAL: draw_post_meal,
-    State.FOOD_PHOTO: draw_food_result,
-    State.PRE_SLEEP: draw_sleep,
-    State.SLEEPING: draw_sleep,
-    State.CALIBRATING: draw_calibrating,
+
+_MENU_DRAWERS = {
+    "main": draw_main_menu,
+    "meal_confirm": draw_meal_confirm,
+    "food_photo": draw_food_photo_prompt,
+    "food_analysing": draw_food_analysing,
+    "food_result": draw_food_result,
+    "meal_saved": draw_meal_saved,
+    "symptom_severity": draw_symptom_severity,
+    "symptom_type": draw_symptom_type,
+    "symptom_saved": draw_symptom_saved,
+    "med_prompt": draw_med_reminder,
+    "med_ack": draw_med_ack,
+    "settings": draw_settings,
+    "about": draw_about,
+    "flash": draw_flash,
 }
 
 
 def render(state: State, ctx: dict, oled) -> None:
-    color = getattr(oled, "color", False)
-    w, h = oled.width, oled.height
+    w = int(getattr(oled, "width", 160))
+    h = int(getattr(oled, "height", 128))
+    img, d = theme.new_frame(w, h)
+    draw_ctx = {**ctx, "_w": w, "_h": h}
 
-    if color:
-        img = Image.new("RGB", (w, h), _C_BG)
-        d = ImageDraw.Draw(img)
-        draw_ctx = {**ctx, "_w": w, "_h": h}
-        if ctx.get("display_demo"):
-            draw_system_ok_rgb(d, draw_ctx)
-        elif state == State.IDLE and ctx.get("alert_active"):
-            draw_alert_rgb(d, draw_ctx)
-        else:
-            drawer = _RGB_DRAWERS.get(state, draw_booting_rgb)
-            drawer(d, draw_ctx)
+    if draw_ctx.get("display_demo"):
+        theme.title_bar(d, "UPRIGHT", w)
+        d.text((4, 32), "SYSTEM OK", fill=theme._C_FG)
+        d.text((4, 48), "Display + web", fill=theme._C_ACCENT)
         oled.show(img)
         return
 
-    base_w, base_h = 128, 64
-    mono = Image.new("1", (base_w, base_h), 0)
-    d = ImageDraw.Draw(mono)
-    drawer = _DRAWERS.get(state, draw_booting)
-    if state == State.IDLE and ctx.get("alert_active"):
-        draw_alert(d, ctx)
+    screen = draw_ctx.get("menu_screen", "")
+    if draw_ctx.get("menu_open") and screen in _MENU_DRAWERS:
+        _MENU_DRAWERS[screen](d, draw_ctx)
+    elif state == State.BOOTING:
+        draw_booting(d, draw_ctx)
+    elif state == State.POST_MEAL:
+        draw_post_meal_watch(d, draw_ctx)
+    elif state == State.FOOD_PHOTO and draw_ctx.get("name"):
+        draw_food_result(d, draw_ctx)
+    elif state == State.FOOD_PHOTO:
+        draw_food_analysing(d, draw_ctx)
+    elif state in (State.CALIBRATING, State.ONBOARDING):
+        draw_calibrating(d, draw_ctx)
+    elif state in (State.PRE_SLEEP, State.SLEEPING):
+        draw_sleep(d, draw_ctx)
     else:
-        drawer(d, ctx)
-    if (w, h) != (base_w, base_h):
-        scale = max(1, min(w // base_w, h // base_h))
-        scaled = mono.resize((base_w * scale, base_h * scale), Image.NEAREST)
-        canvas = Image.new("1", (w, h), 0)
-        canvas.paste(scaled, ((w - scaled.width) // 2, (h - scaled.height) // 2))
-        mono = canvas
-    oled.show(mono)
+        draw_watch_face(d, draw_ctx)
+
+    oled.show(img)
