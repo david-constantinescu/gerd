@@ -29,17 +29,11 @@ def _posture_status(pct: float, alert: bool) -> str:
     return "LOW"
 
 
-def _draw_battery(d: ImageDraw.ImageDraw, ctx: dict, w: int) -> None:
-    pct = int(ctx.get("battery_pct", 100))
-    low = bool(ctx.get("battery_low", False))
-    icon_w, icon_h = 22, 10
-    theme.battery_icon(d, max(4, w - icon_w - 4), 5, pct, low=low, icon_w=icon_w, icon_h=icon_h)
-
-
 def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     now = datetime.now().strftime("%H:%M")
     bpm = ctx.get("bpm", "--")
+    bat = ctx.get("battery_text", "--")
     posture = ctx.get("posture_pct", 0.0)
     pitch = ctx.get("pitch", 0.0)
     last_meal = ctx.get("last_meal_text", "-")
@@ -49,8 +43,7 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
     if alert:
         d.text((4, 4), f"{now}  {status}", fill=theme._C_WARN)
-        d.text((72, 4), f"{bpm}bpm", fill=theme._C_ACCENT)
-        _draw_battery(d, ctx, w)
+        d.text((max(4, w - 56), 4), f"{bpm}bpm", fill=theme._C_ACCENT)
         theme.hr(d, 20, w)
         d.text((4, 26), "Posture", fill=theme._C_FG)
         theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
@@ -62,9 +55,9 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
     d.text((4, 4), now, fill=theme._C_FG)
     d.text((52, 4), status, fill=theme._C_ACCENT)
-    _draw_battery(d, ctx, w)
+    d.text((max(4, w - 62), 4), f"Bat {bat}", fill=theme._C_ACCENT)
     if bpm != "--":
-        d.text((max(4, w - 62), 18), f"{bpm} bpm", fill=theme._C_DIM)
+        d.text((max(4, w - 62), 16), f"{bpm} bpm", fill=theme._C_DIM)
     theme.hr(d, 20, w)
     d.text((4, 26), "Posture", fill=theme._C_FG)
     theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
@@ -72,19 +65,20 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((max(4, w - 48), 56), f"{int(posture)}%", fill=theme._C_FG)
     d.text((4, 72), f"Meal {last_meal}", fill=theme._C_FG)
     d.text((4, 88), "Upright OK", fill=theme._C_FG)
-    theme.footer_hint(d, "A up/back  B down/select", h)
+    theme.footer_hint(d, "Hold A=meal  B=menu", h)
 
 
 def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     now = datetime.now().strftime("%H:%M")
+    bat = ctx.get("battery_text", "--")
     posture = ctx.get("posture_pct", 0.0)
     remaining = ctx.get("remaining", "0:00")
     frac = ctx.get("progress", 0.0)
     meal_at = ctx.get("meal_at_text", "-")
 
     d.text((4, 4), f"{now}  POST-MEAL", fill=theme._C_ACCENT)
-    _draw_battery(d, ctx, w)
+    d.text((max(4, w - 62), 4), f"Bat {bat}", fill=theme._C_ACCENT)
     theme.hr(d, 20, w)
     d.text((4, 26), "Posture", fill=theme._C_FG)
     theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
@@ -92,7 +86,7 @@ def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     theme.progress_bar(d, 4, 72, max(40, w - 8), 10, frac)
     d.text((4, 90), f"Meal at {meal_at}", fill=theme._C_DIM)
     d.text((max(4, w - 48), 40), f"{int(posture)}%", fill=theme._C_FG)
-    theme.footer_hint(d, "A up/back  B down/select", h)
+    theme.footer_hint(d, "B=menu", h)
 
 
 def draw_main_menu(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -116,7 +110,7 @@ def draw_meal_confirm(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     idx = int(ctx.get("menu_index", 0))
     theme.menu_row(d, 64, "> Yes" if idx == 0 else "  Yes", w=w, selected=(idx == 0))
     theme.menu_row(d, 84, "> No" if idx == 1 else "  No", w=w, selected=(idx == 1))
-    theme.footer_hint(d, "A back  B select", h)
+    theme.footer_hint(d, "B=next  hold B=ok", h)
 
 
 def draw_food_photo_prompt(d: ImageDraw.ImageDraw, ctx: dict) -> None:

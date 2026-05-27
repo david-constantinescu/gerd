@@ -13,17 +13,15 @@ from .gpio_lgpio import claim_input, read_active_low
 
 log = logging.getLogger("hal.button")
 
-_DOUBLE_GAP = 0.45
-# A needs a longer hold before "long" — easier to tap without triggering back.
-_LONG_THRESHOLD_A = 2.2
-_LONG_THRESHOLD_B = 1.8
-_VERYLONG_THRESHOLD = 4.0
+_DOUBLE_GAP = 0.5
+_LONG_THRESHOLD = 1.5
+_VERYLONG_THRESHOLD = 3.0
 
 
 def classify(presses: list[float], hold_duration: float) -> str:
     if hold_duration >= _VERYLONG_THRESHOLD:
         return "verylong"
-    if hold_duration >= _LONG_THRESHOLD_B:
+    if hold_duration >= _LONG_THRESHOLD:
         return "long"
     n = len(presses)
     if n >= 3:
@@ -33,38 +31,34 @@ def classify(presses: list[float], hold_duration: float) -> str:
     return "single"
 
 
-def classify_hold(hold_duration: float, long_threshold: float) -> str:
-    if hold_duration >= _VERYLONG_THRESHOLD:
-        return "verylong"
-    if hold_duration >= long_threshold:
-        return "long"
-    return "single"
-
-
 @dataclass
 class _BtnState:
     name: str
     pin: int
-    long_threshold: float
+    map_short: str
+    map_long: str
+    map_verylong: str | None = None
     presses: list[float] = field(default_factory=list)
     pressed_at: float | None = None
 
 
+def _map_pattern(state: _BtnState, pattern: str) -> str:
+    if pattern == "verylong" and state.map_verylong:
+        return state.map_verylong
+    if pattern == "long":
+        return state.map_long
+    return state.map_short if pattern == "single" else pattern
+
+
 def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
     states = [
-        _BtnState("a", PIN_BUTTON_A, _LONG_THRESHOLD_A),
-        _BtnState("b", PIN_BUTTON_B, _LONG_THRESHOLD_B),
+        _BtnState("a", PIN_BUTTON_A, map_short="single", map_long="long", map_verylong="verylong"),
+        _BtnState("b", PIN_BUTTON_B, map_short="single", map_long="double", map_verylong="triple"),
     ]
     for st in states:
         claim_input(st.pin)
 
-    log.info(
-        "buttons on GPIO %s (A, long>=%.1fs) and GPIO %s (B, long>=%.1fs)",
-        PIN_BUTTON_A,
-        _LONG_THRESHOLD_A,
-        PIN_BUTTON_B,
-        _LONG_THRESHOLD_B,
-    )
+    log.info("buttons on GPIO %s (A) and GPIO %s (B)", PIN_BUTTON_A, PIN_BUTTON_B)
 
     while not stop.is_set():
         now = time.time()
@@ -75,12 +69,13 @@ def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
             elif not is_down and st.pressed_at is not None:
                 hold = now - st.pressed_at
                 st.pressed_at = None
-                if hold >= st.long_threshold:
-                    pattern = classify_hold(hold, st.long_threshold)
+                if hold >= _LONG_THRESHOLD:
+                    pattern = classify([], hold)
+                    mapped = _map_pattern(st, pattern)
                     evt_bus.publish(
                         Event(
                             EventType.BUTTON_PRESS,
-                            payload={"pattern": pattern, "button": st.name, "raw": pattern},
+                            payload={"pattern": mapped, "button": st.name, "raw": pattern},
                         )
                     )
                     st.presses.clear()
@@ -88,10 +83,11 @@ def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
                     st.presses.append(now)
             if st.presses and (now - st.presses[-1]) > _DOUBLE_GAP and st.pressed_at is None:
                 pattern = classify(st.presses, 0)
+                mapped = _map_pattern(st, pattern)
                 evt_bus.publish(
                     Event(
                         EventType.BUTTON_PRESS,
-                        payload={"pattern": pattern, "button": st.name, "raw": pattern},
+                        payload={"pattern": mapped, "button": st.name, "raw": pattern},
                     )
                 )
                 st.presses.clear()

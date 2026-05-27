@@ -6,8 +6,8 @@ Source: `oled menus.pdf`. The on-device TFT renders this layout scaled to **160�
 
 | Button | GPIO | Role (replaces encoder + back in PDF) |
 |--------|------|----------------------------------------|
-| **A** (left / back) | 20 | **Short:** back or previous menu item · **Long:** log meal (watch face: “Next log: hold”) |
-| **B** (right / action) | 21 | **Short:** open menu / next item / cycle option · **Long:** confirm / select |
+| **A** (top) | 20 | **Tap:** previous item · **Hold (~2.2s):** back / close |
+| **B** (bottom) | 21 | **Tap:** next item · **Hold (~1.8s):** select / confirm |
 
 No rotary encoder is connected.
 

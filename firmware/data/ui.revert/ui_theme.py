@@ -56,34 +56,3 @@ def progress_bar(
 
 def footer_hint(d: ImageDraw.ImageDraw, text: str, h: int) -> None:
     d.text((4, max(4, h - 22)), text[:28], fill=_C_DIM)
-
-
-def battery_icon(
-    d: ImageDraw.ImageDraw,
-    x: int,
-    y: int,
-    pct: int,
-    *,
-    low: bool = False,
-    icon_w: int = 22,
-    icon_h: int = 10,
-) -> None:
-    """Horizontal battery outline with fill level (cheap PIL rects)."""
-    pct = max(0, min(100, int(pct)))
-    col = _C_WARN if low else _C_ACCENT
-    tip_w = 2
-    body_right = x + icon_w - tip_w - 1
-    d.rectangle((x, y, body_right, y + icon_h - 1), outline=col)
-    tip_y0 = y + icon_h // 2 - 2
-    tip_y1 = y + icon_h // 2 + 1
-    d.rectangle((body_right + 1, tip_y0, x + icon_w - 1, tip_y1), fill=col)
-    pad = 2
-    inner_left = x + pad
-    inner_right = body_right - pad
-    inner_w = max(0, inner_right - inner_left)
-    fill_w = max(1, int(inner_w * pct / 100)) if pct > 0 else 0
-    if fill_w > 0:
-        d.rectangle(
-            (inner_left, y + pad, inner_left + fill_w, y + icon_h - pad - 1),
-            fill=col,
-        )

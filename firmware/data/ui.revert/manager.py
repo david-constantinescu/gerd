@@ -179,27 +179,29 @@ class ModeManager:
         elif btn == "b":
             if pattern == "long":
                 self._on_b_long(now)
-            elif pattern == "single":
+            else:
                 self._on_b_short(now)
         self._paint_now()
 
     def _on_a_short(self, now: float) -> None:
-        if self.menu.open and self.menu.screen != "flash":
-            self.menu.prev_item()
-            return
-        if self.ctx.state == State.CALIBRATING:
-            self._transition(State.IDLE)
-
-    def _on_a_long(self, now: float) -> None:
         if self.menu.open:
-            if self.menu.screen == "main":
+            if self.menu.screen == "main" and self.menu.index == 0:
                 self.menu.close()
             else:
                 self._menu_back()
             return
         if self.ctx.state == State.CALIBRATING:
             self._transition(State.IDLE)
+
+    def _on_a_long(self, now: float) -> None:
+        if self.menu.open:
             self.menu.close()
+            return
+        if self.ctx.state in (State.IDLE, State.POST_MEAL):
+            self.menu.open = True
+            self.menu.screen = "meal_confirm"
+            self.menu.index = 0
+            self.menu.touch(now)
 
     def _on_b_short(self, now: float) -> None:
         if self.menu.open:

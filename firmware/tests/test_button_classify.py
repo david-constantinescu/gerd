@@ -18,4 +18,4 @@ def test_long_press():
 
 
 def test_very_long_press():
-    assert classify([], hold_duration=3.5) == "verylong"
+    assert classify([], hold_duration=4.5) == "verylong"
