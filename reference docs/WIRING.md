@@ -5,18 +5,19 @@ Condensed version:
 
 ## I²C — MPU6050 (accelerometer / posture)
 
-Bit-bang bus via device-tree overlay (not the header SDA/SCL on GPIO 2/3):
+Firmware bit-bang I²C (preferred — no kernel overlay). **Do not use GPIO 28 for
+SCL on Pi Zero 2 W**; that line is reserved for SDIO and will report `GPIO busy`.
 
-| Signal | Pi pin (BCM) | Notes                          |
-|--------|--------------|--------------------------------|
-| SDA    | GPIO **27**  | `dtoverlay=i2c-gpio,...sda=27` |
-| SCL    | GPIO **28**  | `dtoverlay=i2c-gpio,...scl=28` |
-| INT    | GPIO **13**  | optional; firmware polls IMU   |
-| VCC    | 3V3          |                                |
-| GND    | GND          |                                |
+| Signal | Pi pin (BCM) | Header pin | Notes                    |
+|--------|--------------|------------|--------------------------|
+| SDA    | GPIO **27**  | 13         | firmware bit-bang        |
+| SCL    | GPIO **3**   | 5          | not GPIO 28              |
+| INT    | GPIO **13**  | 21         | optional; firmware polls |
+| VCC    | 3V3          | 1 or 17    |                          |
+| GND    | GND          | 6, 9, 14…  |                          |
 
-Run `sudo bash scripts/pi-enable-hardware.sh` once, then reboot. Expected
-`i2cdetect` on the new bus: **`0x68`** (MPU6050).
+Add **4.7 kΩ pull-ups** on SDA and SCL to 3.3 V if the breakout has none.
+After wiring, reboot and check logs for `MPU6050 bit-bang … WHO_AM_I ok`.
 
 ## I²C bus (shared — MAX30102, OLED) — optional / not on this build
 

@@ -14,6 +14,10 @@ MAIN_ITEMS: list[tuple[str, str]] = [
     ("About", "about"),
 ]
 
+SETTINGS_ITEMS: list[tuple[str, str]] = [
+    ("Calibrate posture", "calibrate"),
+]
+
 SYMPTOM_SEVERITIES: list[str] = [
     "1 - Mild",
     "2 - Moderate",
@@ -85,6 +89,10 @@ class MenuState:
             return 2
         if self.screen == "food_result":
             return 2
+        if self.screen == "settings":
+            return len(SETTINGS_ITEMS)
+        if self.screen in ("about", "med_info"):
+            return 1
         return 1
 
     def next_item(self) -> None:
@@ -117,6 +125,12 @@ class MenuState:
             return "food_confirm" if self.index == 0 else "food_retry"
         if self.screen == "med_prompt" and self.pending_med:
             return "med_ack"
+        if self.screen == "settings":
+            return SETTINGS_ITEMS[self.index][1]
+        if self.screen == "med_info":
+            return "med_done"
+        if self.screen == "about":
+            return "about_done"
         return None
 
     def to_ctx(self) -> dict:

@@ -28,6 +28,11 @@ from .states import State, can_transition
 
 log = logging.getLogger("modes.manager")
 
+# Screens where bottom tap does nothing (busy or passive).
+_NO_SELECT_SCREENS = frozenset({"food_analysing", "food_preview", "flash"})
+# Screens where any bottom tap dismisses.
+_DISMISS_SCREENS = frozenset({"meal_saved", "symptom_saved", "med_ack", "about"})
+
 
 @dataclass
 class Context:
@@ -220,19 +225,14 @@ class ModeManager:
         now = time.time()
         self.menu.touch(now)
         if btn == "a":
-            if pattern == "long":
-                self._on_a_long(now)
-            elif pattern == "verylong":
-                self._transition(State.CALIBRATING)
-                self.menu.open = True
-                self.menu.screen = "main"
-                self.menu.index = 0
-            else:
+            if pattern == "double":
+                self._on_a_double(now)
+            elif pattern == "single":
                 self._on_a_short(now)
         elif btn == "b":
-            if pattern == "long":
-                self._on_b_long(now)
-            elif pattern in ("single", "double", "triple"):
+            if pattern == "double":
+                self._on_b_double(now)
+            elif pattern in ("single", "triple"):
                 self._on_b_short(now)
         self._paint_now()
 
@@ -243,7 +243,7 @@ class ModeManager:
         if self.ctx.state == State.CALIBRATING:
             self._transition(State.IDLE)
 
-    def _on_a_long(self, now: float) -> None:
+    def _on_a_double(self, now: float) -> None:
         if self.menu.open:
             if self.menu.screen == "main":
                 self.menu.close()
@@ -255,15 +255,11 @@ class ModeManager:
             self.menu.close()
 
     def _on_b_short(self, now: float) -> None:
-        if self.menu.screen == "flash":
-            return
         if not self.menu.open:
             return
-        action = self.menu.current_action()
-        if action:
-            self._menu_action(action, now)
+        self._menu_select(now)
 
-    def _on_b_long(self, now: float) -> None:
+    def _on_b_double(self, now: float) -> None:
         if self.ctx.state == State.CALIBRATING:
             self.ctx.calibration_step = min(2, self.ctx.calibration_step + 1)
             if self.ctx.calibration_step >= 2:
@@ -278,18 +274,21 @@ class ModeManager:
             if self.ctx.state in (State.IDLE, State.POST_MEAL):
                 self.menu.open_main(now)
             return
-        if self.menu.screen == "main":
-            action = self.menu.current_action()
-            if action:
-                self._menu_enter(action, now)
-            return
         if self.menu.screen == "food_photo":
             self._capture_food(now)
             return
-        if self.menu.screen == "med_prompt" and self.menu.pending_med:
-            self.meds.acknowledge(self.menu.pending_med)
-            self.menu.screen = "med_ack"
-            self.menu.flash_until = now + 2.0
+        self._menu_select(now)
+
+    def _menu_select(self, now: float) -> None:
+        """Bottom tap — confirm highlighted row (single or double)."""
+        if self.menu.screen in _NO_SELECT_SCREENS:
+            return
+        if self.menu.screen in _DISMISS_SCREENS:
+            self.menu.close()
+            return
+        action = self.menu.current_action()
+        if action:
+            self._menu_action(action, now)
 
     def _menu_back(self) -> None:
         parent = {
@@ -303,8 +302,10 @@ class ModeManager:
             "meal_saved": "main",
             "med_prompt": "main",
             "med_ack": "main",
+            "med_info": "main",
             "settings": "main",
             "about": "main",
+            "food_analysing": "food_photo",
         }
         if self.menu.screen == "main":
             self.menu.close()
@@ -315,8 +316,8 @@ class ModeManager:
         if nxt == "main":
             self.menu.open = True
 
-    def _menu_enter(self, action: str, now: float) -> None:
-        """Bottom long — open the highlighted menu branch."""
+    def _menu_action(self, action: str, now: float) -> None:
+        """Confirm the highlighted menu choice."""
         if action == "meal":
             self.menu.screen = "meal_confirm"
             self.menu.index = 0
@@ -324,7 +325,7 @@ class ModeManager:
             self.menu.screen = "symptom_severity"
             self.menu.index = 0
         elif action == "med":
-            self.menu.screen = "settings"
+            self.menu.screen = "med_info"
             self.menu.index = 0
         elif action == "settings":
             self.menu.screen = "settings"
@@ -332,14 +333,19 @@ class ModeManager:
         elif action == "sleep":
             self.menu.close()
             self.sleep.begin_night()
-            self._transition(State.SLEEPING)
+            self._transition(State.PRE_SLEEP)
         elif action == "about":
             self.menu.screen = "about"
             self.menu.index = 0
-
-    def _menu_action(self, action: str, now: float) -> None:
-        """Bottom short — confirm the highlighted choice."""
-        if action == "meal_yes":
+        elif action == "about_done":
+            self.menu.close()
+        elif action == "med_done":
+            self._menu_back()
+        elif action == "calibrate":
+            self.menu.close()
+            self.ctx.calibration_step = 0
+            self._transition(State.CALIBRATING)
+        elif action == "meal_yes":
             self._log_meal()
             self.menu.screen = "food_photo"
             self.menu.index = 0

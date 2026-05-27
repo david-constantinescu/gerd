@@ -31,9 +31,9 @@ PIN_MOTOR = 22  # physical header pin 15 (motor IN)
 PIN_ENCODER_CLK = 17
 PIN_ENCODER_DT = 27  # also MPU6050 SDA (bit-bang I²C) — encoder not fitted
 PIN_ENCODER_SW = 22  # unused — encoder not fitted; shares BCM 22 with motor
-# MPU6050 on a separate bit-bang I²C bus (dtoverlay=i2c-gpio,sda=27,scl=28).
+# MPU6050 bit-bang I²C. SCL must NOT be GPIO 28 on Pi Zero 2 W (SDIO — "GPIO busy").
 PIN_MPU6050_SDA = 27
-PIN_MPU6050_SCL = 28
+PIN_MPU6050_SCL = 3  # header pin 5; was 28 in early docs (invalid on Zero 2 W)
 PIN_MPU6050_INT = 13  # optional data-ready; polling used for now
 # Legacy header I²C (unused on this build — sensors on GPIO 27/28).
 PIN_I2C_SDA = 2
@@ -43,7 +43,7 @@ PIN_I2S_LRC = 19
 PIN_I2S_DIN = 21
 
 # Prefer firmware bit-bang on GPIO 27/28 (see hal/i2c_bitbang.py). Kernel overlay optional.
-MPU_I2C_GPIO_OVERLAY = "i2c-gpio,i2c_gpio_sda=27,i2c_gpio_scl=28,i2c_gpio_delay_us=5"
+MPU_I2C_GPIO_OVERLAY = "i2c-gpio,i2c_gpio_sda=27,i2c_gpio_scl=3,i2c_gpio_delay_us=5"
 USE_KERNEL_MPU_I2C = False
 # MOSI=10, SCLK=11, CE0=8 — CS handled by spidev; DC/RST below.
 

@@ -10,7 +10,7 @@ from upright.hal import button
 def main() -> int:
     bus = EventBus()
     th = button.start_thread(bus, dry_run=False)
-    print("Press the button (60 s) — single, double, triple, long, very long…")
+    print("Press the button (60 s) — single, double, triple…")
     end = time.time() + 60
     while time.time() < end:
         ev = bus.get(timeout=0.5)

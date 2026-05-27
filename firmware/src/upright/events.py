@@ -22,7 +22,7 @@ class EventType(str, Enum):
     POSTURE_SAMPLE = "posture_sample"
     HRV_SAMPLE = "hrv_sample"
     POWER_SAMPLE = "power_sample"
-    BUTTON_PRESS = "button_press"  # payload: pattern (single|double|triple|long|verylong)
+    BUTTON_PRESS = "button_press"  # payload: pattern (single|double|triple)
     ENCODER_ROTATE = "encoder_rotate"  # payload: direction (cw|ccw)
     ENCODER_CLICK = "encoder_click"
     CAMERA_FRAME = "camera_frame"

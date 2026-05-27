@@ -27,7 +27,7 @@ sed -i '/^dtparam=i2s=on/s/^/# disabled for buttons: /' "$CFG" || true
 sed -i '/^dtoverlay=hifiberry-dac/s/^/# disabled for buttons: /' "$CFG" || true
 
 # Bit-bang I²C for MPU6050 on GPIO 27/28 (does not touch SPI display pins 10/11).
-MPU_OVERLAY='dtoverlay=i2c-gpio,i2c_gpio_sda=27,i2c_gpio_scl=28,i2c_gpio_delay_us=2'
+MPU_OVERLAY='dtoverlay=i2c-gpio,i2c_gpio_sda=27,i2c_gpio_scl=3,i2c_gpio_delay_us=2'
 if grep -q 'i2c-gpio' "$CFG" 2>/dev/null; then
   if grep -q 'i2c_gpio_sda=10' "$CFG" 2>/dev/null; then
     echo "[upright] replacing old i2c-gpio overlay (was on SPI pins 10/11)"

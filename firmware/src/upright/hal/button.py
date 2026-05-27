@@ -1,4 +1,8 @@
-"""Two tactile buttons (active low, pull-up) via lgpio."""
+"""Two tactile buttons (active low, pull-up) via lgpio.
+
+Tap patterns only — no long-press detection. Double-tap carries the actions
+that used to be on long press (back on top, open menu / branch on bottom).
+"""
 
 from __future__ import annotations
 
@@ -13,21 +17,16 @@ from .gpio_lgpio import claim_input, read_active_low
 
 log = logging.getLogger("hal.button")
 
-_VERYLONG_THRESHOLD = 3.5
-_LONG_COOLDOWN = 0.1
+_COOLDOWN = 0.08
 
-# Per-button timing — bottom (B) gets a longer short window before long fires.
-_BTN_TIMING: dict[str, dict[str, float]] = {
-    "a": {"long": 1.8, "gap": 0.50},
-    "b": {"long": 2.35, "gap": 0.62},
+# Max gap between taps in a multi-tap gesture (seconds).
+_BTN_TIMING: dict[str, float] = {
+    "a": 0.50,
+    "b": 0.62,  # bottom button — slightly more forgiving
 }
 
 
-def classify(presses: list[float], hold_duration: float, *, long_threshold: float) -> str:
-    if hold_duration >= _VERYLONG_THRESHOLD:
-        return "verylong"
-    if hold_duration >= long_threshold:
-        return "long"
+def classify(presses: list[float]) -> str:
     n = len(presses)
     if n >= 3:
         return "triple"
@@ -36,23 +35,13 @@ def classify(presses: list[float], hold_duration: float, *, long_threshold: floa
     return "single"
 
 
-def classify_hold(hold_duration: float, *, long_threshold: float) -> str:
-    if hold_duration >= _VERYLONG_THRESHOLD:
-        return "verylong"
-    if hold_duration >= long_threshold:
-        return "long"
-    return "single"
-
-
 @dataclass
 class _BtnState:
     name: str
     pin: int
-    long_threshold: float
     double_gap: float
     presses: list[float] = field(default_factory=list)
     pressed_at: float | None = None
-    long_fired: bool = False
     cooldown_until: float = 0.0
 
 
@@ -73,30 +62,18 @@ def _read_pressed(pin: int) -> bool:
 
 def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
     states = [
-        _BtnState(
-            "a",
-            PIN_BUTTON_A,
-            long_threshold=_BTN_TIMING["a"]["long"],
-            double_gap=_BTN_TIMING["a"]["gap"],
-        ),
-        _BtnState(
-            "b",
-            PIN_BUTTON_B,
-            long_threshold=_BTN_TIMING["b"]["long"],
-            double_gap=_BTN_TIMING["b"]["gap"],
-        ),
+        _BtnState("a", PIN_BUTTON_A, double_gap=_BTN_TIMING["a"]),
+        _BtnState("b", PIN_BUTTON_B, double_gap=_BTN_TIMING["b"]),
     ]
     for st in states:
         claim_input(st.pin)
 
     log.info(
-        "buttons GPIO %s / %s — A long=%.2fs gap=%.2fs | B long=%.2fs gap=%.2fs",
+        "buttons GPIO %s / %s — tap only (A gap=%.2fs | B gap=%.2fs)",
         PIN_BUTTON_A,
         PIN_BUTTON_B,
-        _BTN_TIMING["a"]["long"],
-        _BTN_TIMING["a"]["gap"],
-        _BTN_TIMING["b"]["long"],
-        _BTN_TIMING["b"]["gap"],
+        _BTN_TIMING["a"],
+        _BTN_TIMING["b"],
     )
 
     while not stop.is_set():
@@ -110,19 +87,9 @@ def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
             if is_down:
                 if st.pressed_at is None:
                     st.pressed_at = now
-                    st.long_fired = False
-                elif not st.long_fired and (now - st.pressed_at) >= st.long_threshold:
-                    hold = now - st.pressed_at
-                    pattern = classify_hold(hold, long_threshold=st.long_threshold)
-                    st.long_fired = True
-                    _emit(evt_bus, st, pattern)
-                    st.presses.clear()
-                    st.cooldown_until = now + _LONG_COOLDOWN
             elif st.pressed_at is not None:
-                if not st.long_fired:
-                    st.presses.append(now)
+                st.presses.append(now)
                 st.pressed_at = None
-                st.long_fired = False
 
             if (
                 st.presses
@@ -130,12 +97,10 @@ def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
                 and now >= st.cooldown_until
                 and (now - st.presses[-1]) > st.double_gap
             ):
-                pattern = classify(
-                    st.presses, 0, long_threshold=st.long_threshold
-                )
+                pattern = classify(st.presses)
                 _emit(evt_bus, st, pattern)
                 st.presses.clear()
-                st.cooldown_until = now + _LONG_COOLDOWN
+                st.cooldown_until = now + _COOLDOWN
 
         time.sleep(0.01)
 

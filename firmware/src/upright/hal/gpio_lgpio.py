@@ -59,3 +59,33 @@ def write(pin: int, value: int) -> None:
     h = _handle()
     with _lock:
         lgpio.gpio_write(h, pin, value)
+
+
+def free(pin: int) -> None:
+    import lgpio  # type: ignore[import-not-found]
+
+    h = _handle()
+    with _lock:
+        try:
+            lgpio.gpio_free(h, pin)
+        except lgpio.error:
+            pass
+
+
+def claim_input_strict(pin: int) -> None:
+    """Claim with pull-up; raises if pin is reserved (e.g. GPIO 28 on Pi Zero)."""
+    import lgpio  # type: ignore[import-not-found]
+
+    h = _handle()
+    with _lock:
+        free(pin)
+        lgpio.gpio_claim_input(h, pin, lgpio.SET_PULL_UP)
+
+
+def claim_output_strict(pin: int, *, initial: int = 0) -> None:
+    import lgpio  # type: ignore[import-not-found]
+
+    h = _handle()
+    with _lock:
+        free(pin)
+        lgpio.gpio_claim_output(h, pin, initial)

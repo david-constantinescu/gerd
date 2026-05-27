@@ -34,7 +34,7 @@ def scan_buses() -> dict[int, list[int]]:
     for bus_num in list_buses():
         if is_ghost_bus(bus_num):
             log.warning(
-                "I²C bus %s skipped (ghost/stuck lines — check SDA=GPIO27 SCL=GPIO28)",
+                "I²C bus %s skipped (ghost/stuck lines — check SDA=GPIO27 SCL=GPIO3)",
                 bus_num,
             )
             continue
@@ -64,7 +64,7 @@ def log_scan_results(found: dict[int, list[int]] | None = None) -> None:
     if not found:
         log.warning(
             "I²C scan: no devices on any bus — MPU6050 expected @ 0x68 on "
-            "GPIO 27/28 (run pi-enable-hardware.sh and reboot)"
+            "GPIO 27/3 (SDA=27 SCL=3 — see reference docs/WIRING.md)"
         )
         return
     for bus_num, addrs in sorted(found.items()):

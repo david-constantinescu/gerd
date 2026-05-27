@@ -1,6 +1,6 @@
-"""Software I²C for MPU6050 on GPIO 27 (SDA) / 28 (SCL) via lgpio.
+"""Software I²C for MPU6050 on GPIO 27 (SDA) / 3 (SCL) via lgpio.
 
-Used when the kernel ``i2c-gpio`` overlay is absent or stuck (ghost ACK bus).
+GPIO 28 is not usable on Pi Zero 2 W (SDIO). See reference docs/WIRING.md.
 """
 
 from __future__ import annotations
@@ -9,6 +9,7 @@ import logging
 import time
 
 from ..config import PIN_MPU6050_SCL, PIN_MPU6050_SDA
+from . import gpio_lgpio as gpio
 
 log = logging.getLogger("hal.i2c_bitbang")
 
@@ -28,17 +29,14 @@ class Mpu6050Bitbang:
     def __init__(self, sda: int = PIN_MPU6050_SDA, scl: int = PIN_MPU6050_SCL) -> None:
         self._sda = sda
         self._scl = scl
-        self._h: int | None = None
         self._addr = 0x68
 
-    def open(self) -> None:
-        import lgpio  # type: ignore[import-not-found]
-
-        self._h = lgpio.gpiochip_open(0)
-        for pin in (self._sda, self._scl):
-            lgpio.gpio_claim_input(self._h, pin, lgpio.SET_PULL_UP)
+    def open(self, *, timeout_s: float = 1.5) -> None:
+        deadline = time.monotonic() + timeout_s
         self._bus_idle()
         for addr in (0x68, 0x69):
+            if time.monotonic() > deadline:
+                break
             self._addr = addr
             try:
                 self._write_reg(_PWR_MGMT_1, 0x00)
@@ -55,7 +53,9 @@ class Mpu6050Bitbang:
                     return
             except OSError:
                 continue
-        raise OSError("MPU6050 not found on bit-bang I²C")
+        raise OSError(
+            f"MPU6050 not found on bit-bang I²C (SDA=GPIO{self._sda} SCL=GPIO{self._scl})"
+        )
 
     def read_accel(self) -> tuple[float, float, float]:
         raw = self._read_regs(_ACCEL_XOUT_H, 6)
@@ -65,43 +65,38 @@ class Mpu6050Bitbang:
         return ax, ay, az
 
     def close(self) -> None:
-        if self._h is not None:
-            import lgpio  # type: ignore[import-not-found]
-
-            lgpio.gpiochip_close(self._h)
-            self._h = None
+        gpio.free(self._sda)
+        gpio.free(self._scl)
 
     def _sda_release(self) -> None:
-        import lgpio  # type: ignore[import-not-found]
-
-        lgpio.gpio_claim_input(self._h, self._sda, lgpio.SET_PULL_UP)
+        gpio.claim_input_strict(self._sda)
 
     def _sda_low(self) -> None:
-        import lgpio  # type: ignore[import-not-found]
-
-        lgpio.gpio_claim_output(self._h, self._sda, 0)
+        gpio.claim_output_strict(self._sda, initial=0)
 
     def _scl_release(self) -> None:
-        import lgpio  # type: ignore[import-not-found]
-
-        lgpio.gpio_claim_input(self._h, self._scl, lgpio.SET_PULL_UP)
+        gpio.claim_input_strict(self._scl)
 
     def _scl_low(self) -> None:
-        import lgpio  # type: ignore[import-not-found]
-
-        lgpio.gpio_claim_output(self._h, self._scl, 0)
+        gpio.claim_output_strict(self._scl, initial=0)
 
     def _read_sda(self) -> int:
-        import lgpio  # type: ignore[import-not-found]
-
-        return int(lgpio.gpio_read(self._h, self._sda))
+        return gpio.read_gpio(self._sda)
 
     def _tick(self) -> None:
         time.sleep(0.00008)
 
     def _bus_idle(self) -> None:
-        self._sda_release()
-        self._scl_release()
+        try:
+            gpio.claim_input_strict(self._sda)
+            gpio.claim_input_strict(self._scl)
+        except Exception as e:
+            if self._scl == 28:
+                raise OSError(
+                    "GPIO 28 is reserved on Pi Zero 2 W — move MPU6050 SCL to GPIO 3 "
+                    "(header pin 5) and update wiring"
+                ) from e
+            raise
         self._tick()
 
     def _start(self) -> None:

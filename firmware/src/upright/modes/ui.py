@@ -7,6 +7,8 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 
 from . import menu as menu_mod
+
+_SETTINGS_ITEMS = menu_mod.SETTINGS_ITEMS
 from . import ui_theme as theme
 from .states import State
 
@@ -134,7 +136,7 @@ def draw_food_photo_prompt(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     idx = int(ctx.get("menu_index", 0))
     theme.menu_row(d, 56, "> Capture", w=w, selected=(idx == 0))
     theme.menu_row(d, 76, "  Skip photo", w=w, selected=(idx == 1))
-    theme.footer_hint(d, "bottom: capture", h)
+    theme.footer_hint(d, "dbl bottom: capture", h)
 
 
 def draw_food_analysing(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -176,6 +178,7 @@ def draw_food_result(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, 60), advice, fill=theme._C_FG)
     idx = int(ctx.get("menu_index", 0))
     theme.menu_row(d, 84, "> Confirm", w=w, selected=(idx == 0))
+    theme.menu_row(d, 104, "> Retake photo", w=w, selected=(idx == 1))
 
 
 def draw_meal_saved(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -242,19 +245,33 @@ def draw_med_ack(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, 60), datetime.now().strftime("Taken %H:%M"), fill=theme._C_DIM)
 
 
+def draw_med_info(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "MEDICATION", w)
+    d.text((4, 28), "Schedules on phone", fill=theme._C_FG)
+    d.text((4, 44), "web dashboard", fill=theme._C_DIM)
+    theme.menu_row(d, 64, "> Done", w=w, selected=True)
+
+
 def draw_settings(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     theme.title_bar(d, "SETTINGS", w)
-    d.text((4, 32), "Edit on phone:", fill=theme._C_FG)
-    d.text((4, 48), "192.168.1.1", fill=theme._C_ACCENT)
+    idx = int(ctx.get("menu_index", 0))
+    y = 28
+    for i, (label, _) in enumerate(_SETTINGS_ITEMS):
+        prefix = "> " if i == idx else "  "
+        theme.menu_row(d, y, f"{prefix}{label}", w=w, selected=(i == idx))
+        y += 18
+    d.text((4, min(h - 14, y + 4)), "More on phone", fill=theme._C_DIM)
 
 
 def draw_about(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     theme.title_bar(d, "ABOUT", w)
-    d.text((4, 32), "UPRIGHT", fill=theme._C_FG)
-    d.text((4, 48), f"v{ctx.get('version', '0.1.0')}", fill=theme._C_DIM)
-    d.text((4, 64), "GERD wearable", fill=theme._C_FG)
+    d.text((4, 28), "UPRIGHT", fill=theme._C_FG)
+    d.text((4, 44), f"v{ctx.get('version', '0.1.0')}", fill=theme._C_DIM)
+    d.text((4, 60), "GERD wearable", fill=theme._C_FG)
+    theme.menu_row(d, 84, "> Done", w=w, selected=True)
 
 
 def draw_flash(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -269,7 +286,7 @@ def draw_calibrating(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     step = (ctx.get("step", "Stand upright") or "")[:22]
     d.text((4, 32), step, fill=theme._C_FG)
     d.text((4, 48), "Hold still", fill=theme._C_DIM)
-    theme.footer_hint(d, "bottom: capture", h)
+    theme.footer_hint(d, "dbl bottom: capture", h)
 
 
 def draw_booting(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -327,6 +344,7 @@ _MENU_DRAWERS = {
     "symptom_saved": draw_symptom_saved,
     "med_prompt": draw_med_reminder,
     "med_ack": draw_med_ack,
+    "med_info": draw_med_info,
     "settings": draw_settings,
     "about": draw_about,
     "flash": draw_flash,

@@ -48,7 +48,7 @@ def _open_bus() -> tuple[object, int]:
     for bus_num in list_buses():
         if is_ghost_bus(bus_num):
             log.warning(
-                "I²C bus %s looks stuck (ghost ACKs) — check MPU6050 wiring/pull-ups on GPIO 27/28",
+                "I²C bus %s looks stuck (ghost ACKs) — check MPU6050 wiring/pull-ups on GPIO 27/3",
                 bus_num,
             )
             continue
@@ -174,19 +174,40 @@ def _neutral_loop(evt_bus: EventBus, stop: threading.Event) -> None:
         stop.wait(1.0 / hz)
 
 
-def _open_bitbang():
+def _open_bitbang(*, timeout_s: float = 2.0):
     from .i2c_bitbang import Mpu6050Bitbang
 
-    reader = Mpu6050Bitbang()
-    reader.open()
-    return ("bitbang", reader, reader._addr)
+    result: list[tuple] = []
+    err: list[BaseException] = []
+
+    def _worker() -> None:
+        try:
+            reader = Mpu6050Bitbang()
+            reader.open(timeout_s=min(1.5, timeout_s))
+            result.append(("bitbang", reader, reader._addr))
+        except BaseException as e:
+            err.append(e)
+
+    th = threading.Thread(target=_worker, name="hal.imu.open", daemon=True)
+    th.start()
+    th.join(timeout_s)
+    if th.is_alive():
+        raise OSError(
+            f"MPU6050 bit-bang timed out after {timeout_s:.1f}s "
+            "(check SDA=GPIO27 SCL=GPIO3 wiring and pull-ups)"
+        )
+    if err:
+        raise err[0]
+    if not result:
+        raise OSError("MPU6050 bit-bang open failed")
+    return result[0]
 
 
 def _open_mpu():
-    """GPIO bit-bang on 27/28 by default; optional kernel smbus."""
+    """GPIO bit-bang on 27/3 by default; optional kernel smbus."""
     if not USE_KERNEL_MPU_I2C:
         try:
-            return _open_bitbang()
+            return _open_bitbang(timeout_s=2.0)
         except OSError as e:
             log.warning("bit-bang MPU6050 failed (%s) — trying smbus", e)
     try:
@@ -195,8 +216,25 @@ def _open_mpu():
     except OSError as e:
         if USE_KERNEL_MPU_I2C:
             log.warning("smbus MPU6050 failed (%s) — trying bit-bang", e)
-            return _open_bitbang()
+            return _open_bitbang(timeout_s=2.0)
         raise
+
+
+def _run_imu(evt_bus: EventBus, stop: threading.Event) -> None:
+    """Probe and run IMU loop without blocking the main thread during open."""
+    log.info("IMU probe starting (SDA=GPIO27 SCL=GPIO3 bit-bang)")
+    found = scan_buses()
+    log_scan_results(found)
+    try:
+        kind, handle, addr = _open_mpu()
+        log.info("starting IMU thread @ %.2f Hz", _current_rate_hz)
+        if kind == "smbus":
+            _loop_smbus(handle, addr, evt_bus, stop)
+        else:
+            _loop_bitbang(handle, evt_bus, stop)
+    except Exception as e:
+        log.warning("could not open MPU6050 (%s) — using neutral posture", e)
+        _neutral_loop(evt_bus, stop)
 
 
 def start_thread(evt_bus: EventBus, *, dry_run: bool) -> threading.Thread:
@@ -205,18 +243,7 @@ def start_thread(evt_bus: EventBus, *, dry_run: bool) -> threading.Thread:
         target = lambda: _dev_stub_loop(evt_bus, stop)  # noqa: E731
         log.info("starting IMU dev stub thread")
     else:
-        found = scan_buses()
-        log_scan_results(found)
-        try:
-            kind, handle, addr = _open_mpu()
-            if kind == "smbus":
-                target = lambda: _loop_smbus(handle, addr, evt_bus, stop)  # noqa: E731
-            else:
-                target = lambda: _loop_bitbang(handle, evt_bus, stop)  # noqa: E731
-            log.info("starting IMU thread @ %.2f Hz", _current_rate_hz)
-        except Exception as e:
-            log.warning("could not open MPU6050 (%s) — using neutral posture", e)
-            target = lambda: _neutral_loop(evt_bus, stop)  # noqa: E731
+        target = lambda: _run_imu(evt_bus, stop)  # noqa: E731
     th = threading.Thread(target=target, name="hal.imu", daemon=True)
     th.stop = stop  # type: ignore[attr-defined]
     th.start()
