@@ -65,25 +65,45 @@ def battery_icon(
     pct: int,
     *,
     low: bool = False,
-    icon_w: int = 22,
-    icon_h: int = 10,
 ) -> None:
-    """Horizontal battery outline with fill level (cheap PIL rects)."""
+    """Horizontal battery: outline, level fill, centered ``NN%`` in black."""
     pct = max(0, min(100, int(pct)))
-    col = _C_WARN if low else _C_ACCENT
-    tip_w = 2
-    body_right = x + icon_w - tip_w - 1
-    d.rectangle((x, y, body_right, y + icon_h - 1), outline=col)
-    tip_y0 = y + icon_h // 2 - 2
-    tip_y1 = y + icon_h // 2 + 1
-    d.rectangle((body_right + 1, tip_y0, x + icon_w - 1, tip_y1), fill=col)
+    outline = _C_WARN if low else _C_FG
+    fill_col = _C_WARN if low else _C_ACCENT
+    tip_w = 3
+    body_w = 30
+    body_h = 13
+    body_right = x + body_w - tip_w
+
+    # Body + positive terminal
+    d.rectangle((x, y, body_right, y + body_h - 1), outline=outline)
+    mid = y + body_h // 2
+    d.rectangle((body_right + 1, mid - 2, x + body_w, mid + 1), fill=outline)
+
+    # Inner cavity
     pad = 2
-    inner_left = x + pad
+    ix = x + pad
+    iy = y + pad
     inner_right = body_right - pad
-    inner_w = max(0, inner_right - inner_left)
-    fill_w = max(1, int(inner_w * pct / 100)) if pct > 0 else 0
-    if fill_w > 0:
-        d.rectangle(
-            (inner_left, y + pad, inner_left + fill_w, y + icon_h - pad - 1),
-            fill=col,
-        )
+    inner_bottom = y + body_h - pad - 1
+    d.rectangle((ix, iy, inner_right, inner_bottom), fill=(24, 24, 24))
+
+    # Charge level (left → right)
+    inner_w = max(0, inner_right - ix)
+    level_w = int(inner_w * pct / 100)
+    if level_w > 0:
+        d.rectangle((ix, iy, ix + level_w, inner_bottom), fill=fill_col)
+
+    # Percent label on a small light chip so black text stays readable
+    label = f"{pct}%"
+    bbox = d.textbbox((0, 0), label)
+    tw = bbox[2] - bbox[0]
+    th = bbox[3] - bbox[1]
+    tx = ix + max(0, (inner_w - tw) // 2)
+    ty = iy + max(0, (inner_bottom - iy - th) // 2)
+    chip_pad = 1
+    d.rectangle(
+        (tx - chip_pad, ty - chip_pad, tx + tw + chip_pad, ty + th + chip_pad),
+        fill=(235, 235, 235),
+    )
+    d.text((tx, ty), label, fill=(0, 0, 0))

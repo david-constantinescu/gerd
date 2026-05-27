@@ -13,17 +13,17 @@ from .gpio_lgpio import claim_input, read_active_low
 
 log = logging.getLogger("hal.button")
 
-_DOUBLE_GAP = 0.45
-# A needs a longer hold before "long" — easier to tap without triggering back.
-_LONG_THRESHOLD_A = 2.2
-_LONG_THRESHOLD_B = 1.8
-_VERYLONG_THRESHOLD = 4.0
+# Same timing both buttons. Short = release before 1.8s; long fires at 1.8s while held.
+_DOUBLE_GAP = 0.5
+_LONG_THRESHOLD = 1.8
+_VERYLONG_THRESHOLD = 3.5
+_LONG_COOLDOWN = 0.1
 
 
 def classify(presses: list[float], hold_duration: float) -> str:
     if hold_duration >= _VERYLONG_THRESHOLD:
         return "verylong"
-    if hold_duration >= _LONG_THRESHOLD_B:
+    if hold_duration >= _LONG_THRESHOLD:
         return "long"
     n = len(presses)
     if n >= 3:
@@ -33,10 +33,10 @@ def classify(presses: list[float], hold_duration: float) -> str:
     return "single"
 
 
-def classify_hold(hold_duration: float, long_threshold: float) -> str:
+def classify_hold(hold_duration: float) -> str:
     if hold_duration >= _VERYLONG_THRESHOLD:
         return "verylong"
-    if hold_duration >= long_threshold:
+    if hold_duration >= _LONG_THRESHOLD:
         return "long"
     return "single"
 
@@ -45,57 +45,75 @@ def classify_hold(hold_duration: float, long_threshold: float) -> str:
 class _BtnState:
     name: str
     pin: int
-    long_threshold: float
     presses: list[float] = field(default_factory=list)
     pressed_at: float | None = None
+    long_fired: bool = False
+    cooldown_until: float = 0.0
+
+
+def _emit(evt_bus: EventBus, st: _BtnState, pattern: str) -> None:
+    evt_bus.publish(
+        Event(
+            EventType.BUTTON_PRESS,
+            payload={"pattern": pattern, "button": st.name, "raw": pattern},
+        )
+    )
 
 
 def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
     states = [
-        _BtnState("a", PIN_BUTTON_A, _LONG_THRESHOLD_A),
-        _BtnState("b", PIN_BUTTON_B, _LONG_THRESHOLD_B),
+        _BtnState("a", PIN_BUTTON_A),
+        _BtnState("b", PIN_BUTTON_B),
     ]
     for st in states:
         claim_input(st.pin)
 
     log.info(
-        "buttons on GPIO %s (A, long>=%.1fs) and GPIO %s (B, long>=%.1fs)",
+        "buttons GPIO %s / %s — long at %.1fs (instant), short gap %.2fs, cooldown %.1fs",
         PIN_BUTTON_A,
-        _LONG_THRESHOLD_A,
         PIN_BUTTON_B,
-        _LONG_THRESHOLD_B,
+        _LONG_THRESHOLD,
+        _DOUBLE_GAP,
+        _LONG_COOLDOWN,
     )
 
     while not stop.is_set():
         now = time.time()
         for st in states:
+            if now < st.cooldown_until:
+                continue
+
             is_down = read_active_low(st.pin)
-            if is_down and st.pressed_at is None:
-                st.pressed_at = now
-            elif not is_down and st.pressed_at is not None:
-                hold = now - st.pressed_at
-                st.pressed_at = None
-                if hold >= st.long_threshold:
-                    pattern = classify_hold(hold, st.long_threshold)
-                    evt_bus.publish(
-                        Event(
-                            EventType.BUTTON_PRESS,
-                            payload={"pattern": pattern, "button": st.name, "raw": pattern},
-                        )
-                    )
+
+            if is_down:
+                if st.pressed_at is None:
+                    st.pressed_at = now
+                    st.long_fired = False
+                elif not st.long_fired and (now - st.pressed_at) >= _LONG_THRESHOLD:
+                    hold = now - st.pressed_at
+                    pattern = classify_hold(hold)
+                    st.long_fired = True
+                    _emit(evt_bus, st, pattern)
                     st.presses.clear()
-                else:
+                    st.cooldown_until = now + _LONG_COOLDOWN
+            elif st.pressed_at is not None:
+                if not st.long_fired:
                     st.presses.append(now)
-            if st.presses and (now - st.presses[-1]) > _DOUBLE_GAP and st.pressed_at is None:
+                st.pressed_at = None
+                st.long_fired = False
+
+            if (
+                st.presses
+                and st.pressed_at is None
+                and now >= st.cooldown_until
+                and (now - st.presses[-1]) > _DOUBLE_GAP
+            ):
                 pattern = classify(st.presses, 0)
-                evt_bus.publish(
-                    Event(
-                        EventType.BUTTON_PRESS,
-                        payload={"pattern": pattern, "button": st.name, "raw": pattern},
-                    )
-                )
+                _emit(evt_bus, st, pattern)
                 st.presses.clear()
-        time.sleep(0.02)
+                st.cooldown_until = now + _LONG_COOLDOWN
+
+        time.sleep(0.01)
 
 
 def _stub_loop(evt_bus: EventBus, stop: threading.Event) -> None:

@@ -14,8 +14,8 @@ def test_triple_press():
 
 
 def test_long_press():
-    assert classify([], hold_duration=2.0) == "long"
+    assert classify([], hold_duration=1.85) == "long"
 
 
 def test_very_long_press():
-    assert classify([], hold_duration=4.5) == "verylong"
+    assert classify([], hold_duration=3.6) == "verylong"
