@@ -53,38 +53,64 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     now = datetime.now().strftime("%H:%M")
     bpm = ctx.get("bpm", "--")
+    rmssd = ctx.get("rmssd_text", "--")
     posture = ctx.get("posture_pct", 0.0)
     pitch = ctx.get("pitch", 0.0)
-    last_meal = ctx.get("last_meal_text", "-")
+    roll = ctx.get("roll", 0.0)
+    last_meal = ctx.get("last_meal_text", "—")
+    last_food = ctx.get("last_food_name", "—")
+    food_risk = ctx.get("last_food_risk", "")
+    food_score = int(ctx.get("last_food_score", 0) or 0)
     alert = ctx.get("alert_active", False)
     level = ctx.get("level", 0)
     status = _posture_status(posture, alert)
+    bar_w = max(40, w - 52)
 
     if alert:
         d.text((4, 4), f"{now}  {status}", fill=theme._C_WARN)
-        d.text((72, 4), f"{bpm}bpm", fill=theme._C_ACCENT)
         _draw_battery(d, ctx, w)
-        theme.hr(d, 20, w)
-        d.text((4, 26), "Posture score", fill=theme._C_FG)
-        theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
-        d.text((4, 56), f"Pitch {pitch:+.1f} deg", fill=theme._C_FG)
-        d.text((max(4, w - 48), 56), f"{int(posture)}%", fill=theme._C_FG)
-        d.text((4, 72), "Straighten up!", fill=theme._C_WARN)
-        theme.progress_bar(d, 4, 90, max(40, w - 8), 8, level / 3.0)
+        theme.hr(d, 18, w)
+        d.text((4, 22), "Uprightness", fill=theme._C_DIM)
+        theme.progress_bar(d, 4, 34, bar_w, 8, posture / 100.0)
+        d.text((w - 40, 32), f"{int(posture)}%", fill=theme._C_FG)
+        d.text((4, 46), f"Pitch {pitch:+.1f}°", fill=theme._C_FG)
+        d.text((4, 58), "Straighten up!", fill=theme._C_WARN)
+        if bpm != "--":
+            d.text((4, 72), f"HR {bpm} bpm", fill=theme._C_DIM)
+        theme.progress_bar(d, 4, 88, bar_w, 6, level / 3.0)
+        d.text((w - 36, 86), "alert", fill=theme._C_DIM)
         return
 
     d.text((4, 4), now, fill=theme._C_FG)
-    d.text((66, 4), status, fill=theme._C_ACCENT)
+    d.text((50, 4), status, fill=theme._C_ACCENT)
     _draw_battery(d, ctx, w)
+    theme.hr(d, 18, w)
+
+    d.text((4, 22), "Uprightness", fill=theme._C_DIM)
+    theme.progress_bar(d, 4, 34, bar_w, 8, posture / 100.0)
+    d.text((w - 40, 32), f"{int(posture)}%", fill=theme._C_FG)
+
+    d.text((4, 46), f"Pitch {pitch:+.1f}°", fill=theme._C_FG)
+    d.text((max(72, w // 2), 46), f"Roll {roll:+.1f}°", fill=theme._C_FG)
+
+    d.text((4, 58), f"Last meal {last_meal}", fill=theme._C_FG)
+
+    y = 70
+    if last_food and last_food != "—":
+        line = f"Food {last_food[:14]}"
+        if food_risk:
+            line += f"  {food_risk}"
+        d.text((4, y), line, fill=theme._C_FG)
+        y += 12
+        if food_score > 0:
+            d.text((4, y), f"Reflux score {food_score}/100", fill=theme._C_DIM)
+            y += 12
+
     if bpm != "--":
-        d.text((max(4, w - 62), 18), f"{bpm} bpm", fill=theme._C_DIM)
-    theme.hr(d, 20, w)
-    d.text((4, 26), "Posture score", fill=theme._C_FG)
-    theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
-    d.text((4, 56), f"Pitch {pitch:+.1f} deg", fill=theme._C_FG)
-    d.text((max(4, w - 48), 56), f"{int(posture)}%", fill=theme._C_FG)
-    d.text((4, 72), f"Meal {last_meal}", fill=theme._C_FG)
-    d.text((4, 88), "Upright OK", fill=theme._C_FG)
+        hrv = f"HR {bpm} bpm"
+        if rmssd != "--":
+            hrv += f"  HRV {rmssd}ms"
+        d.text((4, y), hrv[:26], fill=theme._C_DIM)
 
 
 def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:

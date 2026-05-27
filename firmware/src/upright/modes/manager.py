@@ -13,7 +13,11 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from ..config import DISPLAY_MIN_REFRESH_SECONDS, DISPLAY_PITCH_REFRESH_SECONDS, TUNABLES
+from ..config import (
+    DISPLAY_MIN_REFRESH_SECONDS,
+    DISPLAY_PITCH_REFRESH_SECONDS,
+    TUNABLES,
+)
 from ..events import Event, EventBus, EventType
 from ..hal import imu
 from ..hal.display import Display
@@ -562,6 +566,23 @@ class ModeManager:
         meal = self.db.last_meal()
         last_meal_text = "—"
         meal_age_bucket = -1
+        last_food = self.db.last_food_photo()
+        last_food_name = "—"
+        last_food_risk = ""
+        last_food_score = 0
+        food_upright_hours = 0.0
+        if last_food:
+            last_food_name = str(last_food.get("name", "—"))[:16]
+            last_food_risk = str(last_food.get("risk", ""))
+            last_food_score = int(last_food.get("gerd_score", 0) or 0)
+            food_upright_hours = float(last_food.get("upright_hours", 0) or 0)
+        last_symptom = self.db.last_symptom()
+        last_symptom_text = ""
+        if last_symptom:
+            typ = str(last_symptom.get("type", ""))[:12]
+            sev = last_symptom.get("severity", "")
+            last_symptom_text = f"{typ} sev{sev}" if typ else ""
+        med_line = self.meds.status_line()
         if meal:
             dt = datetime.fromtimestamp(meal["ts"])
             ago = datetime.now() - dt
@@ -604,6 +625,21 @@ class ModeManager:
             "alert_active": self.ctx.alert_active,
             "level": self.ctx.alert_level,
             "last_meal_text": last_meal_text,
+            "last_food_name": last_food_name,
+            "last_food_risk": last_food_risk,
+            "last_food_score": last_food_score,
+            "rmssd_text": (
+                f"{int(self.ctx.rmssd)}"
+                if self.ctx.rmssd is not None
+                else "--"
+            ),
+            "date_text": datetime.now().strftime("%a %d %b"),
+            "wear_side": TUNABLES.wear_side,
+            "med_line": med_line,
+            "last_symptom_text": last_symptom_text,
+            "food_upright_hours": food_upright_hours,
+            "hotspot_ssid": TUNABLES.hotspot_ssid,
+            "hotspot_ip": TUNABLES.hotspot_ip,
             "meal_age_bucket": meal_age_bucket,
             "remaining": remaining,
             "progress": progress,

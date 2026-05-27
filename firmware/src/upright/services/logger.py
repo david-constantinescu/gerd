@@ -186,6 +186,24 @@ class Logger:
             return None
         return {"ts": row[0], **json.loads(row[1] or "{}")}
 
+    def last_food_photo(self) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT ts, payload FROM events WHERE kind='food_photo' ORDER BY ts DESC LIMIT 1"
+            ).fetchone()
+        if not row:
+            return None
+        return {"ts": row[0], **json.loads(row[1] or "{}")}
+
+    def last_symptom(self) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT ts, payload FROM events WHERE kind='symptom' ORDER BY ts DESC LIMIT 1"
+            ).fetchone()
+        if not row:
+            return None
+        return {"ts": row[0], **json.loads(row[1] or "{}")}
+
     def consume_inbox(self) -> list[dict[str, Any]]:
         with self._lock:
             rows = self._conn.execute(

@@ -63,3 +63,15 @@ class MedReminders:
     def acknowledge(self, name: str) -> None:
         self._pending.pop(name, None)
         self.db.event("med_acknowledged", {"name": name, "ts": time.time()})
+
+    def status_line(self) -> str:
+        """One-line med summary for the watch face."""
+        if self._pending:
+            name = next(iter(self._pending))
+            return f"Med due: {name[:14]}"
+        now = datetime.now()
+        future = [(when, name) for name, when in self._next.items() if when > now]
+        if not future:
+            return ""
+        when, name = min(future, key=lambda x: x[0])
+        return f"Next med {when.strftime('%H:%M')} {name[:10]}"
