@@ -11,12 +11,23 @@ from .gpio_lgpio import claim_output, write
 
 log = logging.getLogger("hal.motor")
 
+# GPIO is on/off only — longer bursts + more repeats = stronger perceived haptic.
 PATTERNS: dict[str, list[float]] = {
-    "gentle": [0.10, 0.0],
-    "moderate": [0.10, 0.10, 0.10, 0.0],
-    "strong": [0.20, 0.10, 0.20, 0.10, 0.20, 0.0],
-    # Longest on-time pulses the GPIO driver allows (coin motor at full rail).
-    "max": [0.9, 0.08, 0.9, 0.08, 0.9, 0.08, 0.9, 0.0],
+    "gentle": [0.30, 0.12, 0.30, 0.0],
+    "moderate": [0.45, 0.15, 0.45, 0.15, 0.45, 0.0],
+    "strong": [0.65, 0.18, 0.65, 0.18, 0.65, 0.18, 0.65, 0.0],
+    "max": [
+        0.95,
+        0.18,
+        0.95,
+        0.18,
+        0.95,
+        0.18,
+        0.95,
+        0.18,
+        0.95,
+        0.0,
+    ],
 }
 
 

@@ -20,8 +20,8 @@ def main() -> int:
     found = scan_buses()
     if not found:
         print("No I²C devices found on any bus.")
-        print("Expected wiring: SDA=GPIO2, SCL=GPIO3, 3V3, GND")
-        print("Expected devices: MPU6050 @ 0x68, MAX30102 @ 0x57")
+        print("Expected wiring: MPU6050 SDA=GPIO27, SCL=GPIO28, 3V3, GND")
+        print("Enable bus: sudo bash scripts/pi-enable-hardware.sh && sudo reboot")
         log_scan_results(found)
         return 1
     for bus_num, addrs in sorted(found.items()):

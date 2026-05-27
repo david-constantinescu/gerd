@@ -12,6 +12,12 @@ _C_ACCENT = (220, 220, 220)
 _C_WARN = (180, 180, 180)
 _C_OK = (220, 220, 220)
 _C_BAT_WARN = (255, 196, 0)
+_C_BAT_WARN_FILL = (210, 155, 0)
+_C_BAT_CRIT = (255, 72, 72)
+_C_BAT_CRIT_FILL = (190, 45, 45)
+_C_BAT_OK = (72, 200, 72)
+_C_BAT_OK_FILL = (50, 165, 50)
+_BAT_LOW_CRITICAL_S = 10.0
 
 
 def new_frame(w: int, h: int) -> tuple[Image.Image, ImageDraw.ImageDraw]:
@@ -59,16 +65,9 @@ def footer_hint(d: ImageDraw.ImageDraw, text: str, h: int) -> None:
     d.text((4, max(4, h - 22)), text[:28], fill=_C_DIM)
 
 
-def _draw_lightning_inside(
-    d: ImageDraw.ImageDraw,
-    ix: int,
-    iy: int,
-    inner_right: int,
-    inner_bottom: int,
+def _draw_lightning_at(
+    d: ImageDraw.ImageDraw, cx: int, cy: int, *, fill: tuple[int, int, int]
 ) -> None:
-    """Black ⚡ centered inside the battery cavity."""
-    cx = (ix + inner_right) // 2
-    cy = (iy + inner_bottom) // 2
     d.polygon(
         [
             (cx + 1, cy - 3),
@@ -78,8 +77,24 @@ def _draw_lightning_inside(
             (cx + 2, cy - 1),
             (cx, cy - 1),
         ],
-        fill=(0, 0, 0),
+        fill=fill,
     )
+
+
+def _draw_low_batt_icons(
+    d: ImageDraw.ImageDraw,
+    ix: int,
+    iy: int,
+    inner_right: int,
+    inner_bottom: int,
+    *,
+    fg: tuple[int, int, int],
+) -> None:
+    """Centered ⚡ and ! side by side inside the cavity."""
+    cx = (ix + inner_right) // 2
+    cy = (iy + inner_bottom) // 2
+    _draw_lightning_at(d, cx - 5, cy, fill=fg)
+    d.text((cx + 3, cy - 5), "!", fill=fg)
 
 
 def battery_icon(
@@ -90,64 +105,75 @@ def battery_icon(
     *,
     low: bool = False,
     powered: bool = False,
+    ok_green: bool = False,
+    low_age_s: float = 0.0,
 ) -> None:
-    """Horizontal battery — percent label, powered ⚡, or low-battery warning."""
+    """Battery with green OK, or yellow/red low (⚡ + !)."""
     pct = max(0, min(100, int(pct)))
+    critical = low and low_age_s >= _BAT_LOW_CRITICAL_S
+
     if low:
-        outline = _C_BAT_WARN
-        fill_col = (200, 150, 0)
-        show_pct = True
-    elif powered:
-        outline = _C_FG
-        fill_col = _C_ACCENT
+        outline = _C_BAT_CRIT if critical else _C_BAT_WARN
+        fill_col = _C_BAT_CRIT_FILL if critical else _C_BAT_WARN_FILL
+        icon_fg = (0, 0, 0)
+        show_icons = True
+        show_pct = False
+    elif ok_green or powered:
+        outline = _C_BAT_OK
+        fill_col = _C_BAT_OK_FILL
         pct = 100
+        icon_fg = (0, 0, 0)
+        show_icons = powered or ok_green
         show_pct = False
     else:
         outline = _C_FG
         fill_col = _C_ACCENT
+        icon_fg = (0, 0, 0)
+        show_icons = False
         show_pct = True
+
     tip_w = 3
     body_w = 30
     body_h = 13
     body_right = x + body_w - tip_w
 
-    # Body + positive terminal
     d.rectangle((x, y, body_right, y + body_h - 1), outline=outline)
     mid = y + body_h // 2
     d.rectangle((body_right + 1, mid - 2, x + body_w, mid + 1), fill=outline)
 
-    # Inner cavity
     pad = 2
     ix = x + pad
     iy = y + pad
     inner_right = body_right - pad
     inner_bottom = y + body_h - pad - 1
+    inner_w = max(0, inner_right - ix)
     d.rectangle((ix, iy, inner_right, inner_bottom), fill=(24, 24, 24))
 
-    # Charge level (left → right)
-    inner_w = max(0, inner_right - ix)
     level_w = int(inner_w * pct / 100)
     if level_w > 0:
         d.rectangle((ix, iy, ix + level_w, inner_bottom), fill=fill_col)
 
-    if powered:
-        _draw_lightning_inside(d, ix, iy, inner_right, inner_bottom)
+    if show_icons and low:
+        _draw_low_batt_icons(d, ix, iy, inner_right, inner_bottom, fg=icon_fg)
+        return
+    if show_icons:
+        _draw_lightning_at(
+            d, (ix + inner_right) // 2, (iy + inner_bottom) // 2, fill=icon_fg
+        )
         return
 
     if not show_pct:
         return
 
-    label = f"{pct}%" if not low else "!"
+    label = f"{pct}%"
     bbox = d.textbbox((0, 0), label)
     tw = bbox[2] - bbox[0]
     th = bbox[3] - bbox[1]
     tx = ix + max(0, (inner_w - tw) // 2)
     ty = iy + max(0, (inner_bottom - iy - th) // 2 - 4)
     chip_pad = 1
-    chip_fill = (255, 220, 120) if low else (235, 235, 235)
-    text_fill = (0, 0, 0)
     d.rectangle(
         (tx - chip_pad, ty - chip_pad, tx + tw + chip_pad, ty + th + chip_pad),
-        fill=chip_fill,
+        fill=(235, 235, 235),
     )
-    d.text((tx, ty), label, fill=text_fill)
+    d.text((tx, ty), label, fill=(0, 0, 0))

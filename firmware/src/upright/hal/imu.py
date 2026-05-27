@@ -12,7 +12,7 @@ import math
 import threading
 import time
 
-from ..config import I2C_ADDR_MPU6050, TUNABLES
+from ..config import I2C_ADDR_MPU6050, TUNABLES, USE_KERNEL_MPU_I2C
 from ..events import Event, EventBus, EventType
 from .i2c_probe import log_scan_results, scan_buses
 
@@ -20,6 +20,8 @@ log = logging.getLogger("hal.imu")
 
 # MPU6050 register map (subset)
 _PWR_MGMT_1 = 0x6B
+_WHO_AM_I = 0x75
+_MPU_WHO_AM_I_VALUE = 0x68
 _CONFIG = 0x1A
 _ACCEL_XOUT_H = 0x3B
 
@@ -40,21 +42,39 @@ def set_rate(hz: float) -> None:
 
 
 def _open_bus() -> tuple[object, int]:
-    from .i2c_util import open_smbus, probe_address
+    from .i2c_util import is_ghost_bus, list_buses, open_smbus
 
     last_err: Exception | None = None
-    for addr in _MPU_ADDRS:
-        preferred = probe_address(addr)
-        if preferred is None:
+    for bus_num in list_buses():
+        if is_ghost_bus(bus_num):
+            log.warning(
+                "I²C bus %s looks stuck (ghost ACKs) — check MPU6050 wiring/pull-ups on GPIO 27/28",
+                bus_num,
+            )
             continue
-        try:
-            bus, bus_num = open_smbus(addr, preferred=preferred)
-            bus.write_byte_data(addr, _PWR_MGMT_1, 0)
-            bus.write_byte_data(addr, _CONFIG, _DLPF_5HZ)
-            log.info("MPU6050 opened on bus %s at 0x%02x (DLPF 5 Hz)", bus_num, addr)
-            return bus, addr
-        except Exception as e:
-            last_err = e
+        for addr in _MPU_ADDRS:
+            bus_obj = None
+            try:
+                bus_obj, found_bus = open_smbus(addr, preferred=bus_num)
+                bus_obj.write_byte_data(addr, _PWR_MGMT_1, 0)
+                time.sleep(0.05)
+                who = bus_obj.read_byte_data(addr, _WHO_AM_I)
+                if who != _MPU_WHO_AM_I_VALUE:
+                    raise OSError(f"WHO_AM_I=0x{who:02x} expected 0x68")
+                bus_obj.write_byte_data(addr, _CONFIG, _DLPF_5HZ)
+                log.info(
+                    "MPU6050 opened on bus %s at 0x%02x (WHO_AM_I ok, DLPF 5 Hz)",
+                    found_bus,
+                    addr,
+                )
+                return bus_obj, addr
+            except Exception as e:
+                last_err = e
+                if bus_obj is not None:
+                    try:
+                        bus_obj.close()
+                    except Exception:
+                        pass
     raise OSError(f"could not open MPU6050 at {_MPU_ADDRS}") from last_err
 
 
@@ -77,7 +97,15 @@ def angles_from_accel(ax: float, ay: float, az: float) -> tuple[float, float]:
     return pitch, roll
 
 
-def _loop(bus_obj, addr: int, evt_bus: EventBus, stop: threading.Event) -> None:
+def _loop_smbus(bus_obj, addr: int, evt_bus: EventBus, stop: threading.Event) -> None:
+    _loop_reader(lambda: _read_accel(bus_obj, addr), evt_bus, stop)
+
+
+def _loop_bitbang(reader, evt_bus: EventBus, stop: threading.Event) -> None:
+    _loop_reader(reader.read_accel, evt_bus, stop)
+
+
+def _loop_reader(read_accel, evt_bus: EventBus, stop: threading.Event) -> None:
     pitch_ema: float | None = None
     roll_ema: float | None = None
     while not stop.is_set():
@@ -85,7 +113,7 @@ def _loop(bus_obj, addr: int, evt_bus: EventBus, stop: threading.Event) -> None:
             hz = _current_rate_hz
         alpha = max(0.05, min(1.0, TUNABLES.imu_smooth_alpha))
         try:
-            ax, ay, az = _read_accel(bus_obj, addr)
+            ax, ay, az = read_accel()
         except Exception as e:  # pragma: no cover
             log.warning("imu read failed: %s", e)
             time.sleep(1.0)
@@ -146,6 +174,31 @@ def _neutral_loop(evt_bus: EventBus, stop: threading.Event) -> None:
         stop.wait(1.0 / hz)
 
 
+def _open_bitbang():
+    from .i2c_bitbang import Mpu6050Bitbang
+
+    reader = Mpu6050Bitbang()
+    reader.open()
+    return ("bitbang", reader, reader._addr)
+
+
+def _open_mpu():
+    """GPIO bit-bang on 27/28 by default; optional kernel smbus."""
+    if not USE_KERNEL_MPU_I2C:
+        try:
+            return _open_bitbang()
+        except OSError as e:
+            log.warning("bit-bang MPU6050 failed (%s) — trying smbus", e)
+    try:
+        bus_obj, addr = _open_bus()
+        return ("smbus", bus_obj, addr)
+    except OSError as e:
+        if USE_KERNEL_MPU_I2C:
+            log.warning("smbus MPU6050 failed (%s) — trying bit-bang", e)
+            return _open_bitbang()
+        raise
+
+
 def start_thread(evt_bus: EventBus, *, dry_run: bool) -> threading.Thread:
     stop = threading.Event()
     if dry_run:
@@ -155,8 +208,11 @@ def start_thread(evt_bus: EventBus, *, dry_run: bool) -> threading.Thread:
         found = scan_buses()
         log_scan_results(found)
         try:
-            bus_obj, addr = _open_bus()
-            target = lambda: _loop(bus_obj, addr, evt_bus, stop)  # noqa: E731
+            kind, handle, addr = _open_mpu()
+            if kind == "smbus":
+                target = lambda: _loop_smbus(handle, addr, evt_bus, stop)  # noqa: E731
+            else:
+                target = lambda: _loop_bitbang(handle, evt_bus, stop)  # noqa: E731
             log.info("starting IMU thread @ %.2f Hz", _current_rate_hz)
         except Exception as e:
             log.warning("could not open MPU6050 (%s) — using neutral posture", e)

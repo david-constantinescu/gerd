@@ -64,7 +64,7 @@ class AlertManager:
         s.last_fired = now
 
         if TUNABLES.haptic_alerts_enabled:
-            pattern = {1: "gentle", 2: "moderate", 3: "strong"}[s.level]
+            pattern = {1: "moderate", 2: "strong", 3: "max"}[s.level]
             self.motor.buzz_async(pattern)
 
         if (

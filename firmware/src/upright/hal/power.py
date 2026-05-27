@@ -31,9 +31,11 @@ def _read_max17043() -> float | None:
     except ImportError:
         return None
 
-    from .i2c_util import list_buses
+    from .i2c_util import is_ghost_bus, list_buses
 
     for bus_num in list_buses():
+        if is_ghost_bus(bus_num):
+            continue
         bus = None
         try:
             bus = smbus2.SMBus(bus_num)
@@ -56,9 +58,11 @@ def _read_ina219_mv() -> float | None:
     except ImportError:
         return None
 
-    from .i2c_util import list_buses
+    from .i2c_util import is_ghost_bus, list_buses
 
     for bus_num in list_buses():
+        if is_ghost_bus(bus_num):
+            continue
         for addr in _INA219_ADDRS:
             bus = None
             try:

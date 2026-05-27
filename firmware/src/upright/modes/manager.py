@@ -78,7 +78,7 @@ class ModeManager:
         self._last_pitch_render = 0.0
         self._food_preview = None
         self._pitch_display: float | None = None
-        self._battery_low_prev = False
+        self._battery_low_since = 0.0
         self._lying_since: float = 0.0
         self._display_demo = os.environ.get("UPRIGHT_DISPLAY_DEMO", "").lower() in (
             "1",
@@ -193,12 +193,24 @@ class ModeManager:
             self.ctx.battery_pct = int(pct)
         self.ctx.battery_low = bool(ev.payload.get("battery_low", False))
         self.ctx.battery_source = str(ev.payload.get("battery_source", "unknown"))
-        if self.ctx.battery_low and not was_low:
-            log.warning("battery low — haptic warning")
-            if TUNABLES.haptic_alerts_enabled:
-                self.alerts.motor.buzz_async("max")
-            self._paint_now()
-        elif self.ctx.battery_low != was_low:
+        now = time.time()
+        if self.ctx.battery_low:
+            if not was_low:
+                self._battery_low_since = now
+                log.warning("battery low — haptic warning")
+                if TUNABLES.haptic_alerts_enabled:
+                    self.alerts.motor.buzz_async("max")
+                self._paint_now()
+            elif (
+                was_low
+                and self._battery_low_since > 0
+                and now - self._battery_low_since >= 10.0
+                and now - self._battery_low_since < 11.0
+            ):
+                self._paint_now()
+        else:
+            self._battery_low_since = 0.0
+        if self.ctx.battery_low != was_low and not self.ctx.battery_low:
             self._paint_now()
 
     def _handle_button(self, ev: Event) -> None:
@@ -501,7 +513,9 @@ class ModeManager:
             datetime.now().strftime("%H:%M"),
             int(ctx.get("battery_pct", 100) // 5) * 5,
             bool(ctx.get("battery_low")),
+            int(float(ctx.get("battery_low_age_s", 0)) // 2),
             bool(ctx.get("battery_powered")),
+            bool(ctx.get("battery_ok_green")),
             int(ctx.get("posture_pct", 0) // 10) * 10,
             int(round(float(ctx.get("pitch", 0)) * 2) / 2),
             ctx.get("alert_active"),
@@ -539,6 +553,15 @@ class ModeManager:
             left = max(0.0, self.ctx.meal_window_s - elapsed)
             remaining = f"{int(left // 3600)}h {int((left % 3600) // 60):02d}m"
             progress = elapsed / self.ctx.meal_window_s if self.ctx.meal_window_s else 0.0
+        low_age = (
+            time.time() - self._battery_low_since
+            if self.ctx.battery_low and self._battery_low_since > 0
+            else 0.0
+        )
+        ok_green = not self.ctx.battery_low and (
+            self.ctx.battery_source == "alert_pin"
+            or self.ctx.battery_pct >= 50
+        )
         return {
             "display_demo": self._display_demo,
             "bpm": f"{int(self.ctx.bpm)}" if self.ctx.bpm else "--",
@@ -547,6 +570,8 @@ class ModeManager:
             "battery_source": self.ctx.battery_source,
             "battery_powered": self.ctx.battery_source == "alert_pin"
             and not self.ctx.battery_low,
+            "battery_ok_green": ok_green,
+            "battery_low_age_s": low_age,
             "battery_text": "LOW" if self.ctx.battery_low else f"{self.ctx.battery_pct}%",
             "posture_pct": float(int(self.ctx.posture_pct // 2) * 2),
             "pitch": round(self.ctx.pitch, 1),
@@ -621,7 +646,7 @@ class ModeManager:
                     self._handle_med_reminder(ev)
                 elif ev.type == EventType.NUDGE_SENT:
                     if TUNABLES.haptic_alerts_enabled:
-                        self.alerts.motor.buzz_async("strong")
+                        self.alerts.motor.buzz_async("max")
                 elif ev.type == EventType.SHUTDOWN:
                     break
 

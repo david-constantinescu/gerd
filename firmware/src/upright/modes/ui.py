@@ -33,7 +33,18 @@ def _draw_battery(d: ImageDraw.ImageDraw, ctx: dict, w: int) -> None:
     pct = int(ctx.get("battery_pct", 100))
     low = bool(ctx.get("battery_low", False))
     powered = bool(ctx.get("battery_powered", False))
-    theme.battery_icon(d, max(4, w - 34), 4, pct, low=low, powered=powered)
+    ok_green = bool(ctx.get("battery_ok_green", False))
+    low_age = float(ctx.get("battery_low_age_s", 0.0))
+    theme.battery_icon(
+        d,
+        max(4, w - 34),
+        4,
+        pct,
+        low=low,
+        powered=powered,
+        ok_green=ok_green,
+        low_age_s=low_age,
+    )
 
 
 def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:

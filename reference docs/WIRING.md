@@ -3,7 +3,22 @@
 The canonical source is `reference docs/reflux sentinel wiring diagram.pdf`.
 Condensed version:
 
-## I²C bus (shared — MPU6050, MAX30102, OLED)
+## I²C — MPU6050 (accelerometer / posture)
+
+Bit-bang bus via device-tree overlay (not the header SDA/SCL on GPIO 2/3):
+
+| Signal | Pi pin (BCM) | Notes                          |
+|--------|--------------|--------------------------------|
+| SDA    | GPIO **27**  | `dtoverlay=i2c-gpio,...sda=27` |
+| SCL    | GPIO **28**  | `dtoverlay=i2c-gpio,...scl=28` |
+| INT    | GPIO **13**  | optional; firmware polls IMU   |
+| VCC    | 3V3          |                                |
+| GND    | GND          |                                |
+
+Run `sudo bash scripts/pi-enable-hardware.sh` once, then reboot. Expected
+`i2cdetect` on the new bus: **`0x68`** (MPU6050).
+
+## I²C bus (shared — MAX30102, OLED) — optional / not on this build
 
 | Signal | Pi pin (BCM) | Notes                                    |
 |--------|--------------|------------------------------------------|

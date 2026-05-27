@@ -17,6 +17,31 @@ def list_buses() -> list[int]:
     return buses or [1]
 
 
+def ghost_bus_responders(bus_num: int) -> int:
+    """Bit-bang buses with stuck SDA often ACK every address — treat as invalid."""
+    import smbus2  # type: ignore[import-not-found]
+
+    count = 0
+    try:
+        bus = smbus2.SMBus(bus_num)
+    except OSError:
+        return 0
+    try:
+        for addr in range(0x03, 0x78):
+            try:
+                bus.read_byte(addr)
+                count += 1
+            except OSError:
+                continue
+    finally:
+        bus.close()
+    return count
+
+
+def is_ghost_bus(bus_num: int) -> bool:
+    return ghost_bus_responders(bus_num) > 20
+
+
 def probe_address(addr: int, *, buses: list[int] | None = None) -> int | None:
     import smbus2  # type: ignore[import-not-found]
 
@@ -41,12 +66,12 @@ def open_smbus(addr: int, *, preferred: int | None = None) -> tuple[object, int]
     import smbus2  # type: ignore[import-not-found]
 
     order: list[int] = []
-    if preferred is not None:
+    if preferred is not None and not is_ghost_bus(preferred):
         order.append(preferred)
-    if _CACHED_BUS is not None and _CACHED_BUS not in order:
+    if _CACHED_BUS is not None and _CACHED_BUS not in order and not is_ghost_bus(_CACHED_BUS):
         order.append(_CACHED_BUS)
     for bus_num in list_buses():
-        if bus_num not in order:
+        if bus_num not in order and not is_ghost_bus(bus_num):
             order.append(bus_num)
 
     last_err: Exception | None = None
