@@ -24,6 +24,8 @@ pi = [
     "luma.oled>=3.12",
     "luma.lcd>=2.11",
     "luma.core>=2.4",
+    "adafruit-blinka>=8.46",
+    "adafruit-circuitpython-rgb-display>=3.12",
     "tflite-runtime>=2.14; platform_machine=='aarch64'",
     "watchdog>=4.0",
     "gunicorn>=21.2",

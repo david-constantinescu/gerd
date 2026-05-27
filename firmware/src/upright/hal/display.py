@@ -304,7 +304,7 @@ class _AdafruitST7735:
         rst_val = int(cfg.get("rst", -1))
         rst = digitalio.DigitalInOut(_pin(rst_val)) if rst_val >= 0 else None
 
-        self._rotation = int(cfg.get("rotate", 0))
+        self._swap_rb = bool(cfg.get("swap_rb", False))
         self._disp = adafruit_st7735.ST7735R(
             spi,
             cs=cs,
@@ -313,7 +313,7 @@ class _AdafruitST7735:
             baudrate=int(cfg.get("bus_speed_hz", 8_000_000)),
             width=req_w,
             height=req_h,
-            rotation=0,
+            rotation=int(cfg.get("rotate", 0)),
             x_offset=int(cfg.get("x_offset", 0)),
             y_offset=int(cfg.get("y_offset", 0)),
         )
@@ -321,10 +321,16 @@ class _AdafruitST7735:
         self.height = req_h
 
     def display(self, image) -> None:
-        target = image.convert("RGB").resize((self.width, self.height))
-        if self._rotation in (90, 180, 270):
-            target = target.rotate(self._rotation, expand=True)
-            target = target.resize((self.width, self.height))
+        target = image.convert("RGB")
+        if target.size != (self.width, self.height):
+            from PIL import Image
+
+            target = target.resize((self.width, self.height), Image.NEAREST)
+        if self._swap_rb:
+            from PIL import Image
+
+            r, g, b = target.split()
+            target = Image.merge("RGB", (b, g, r))
         self._disp.image(target, rotation=0)
 
     def clear(self) -> None:
