@@ -83,7 +83,7 @@ class SleepTracker:
             return {}
         total = sum(self.night.samples.values()) or 1
         pcts = {f"{k}_pct": v / total * 100 for k, v in self.night.samples.items()}
-        score = int(pcts["left_pct"])  # crude but matches the spec
+        score = int(pcts.get("left_pct", 0))
         report = {
             "night_of": datetime.fromtimestamp(self.night.started_at).date().isoformat(),
             "duration_s": int(time.time() - self.night.started_at),
@@ -94,3 +94,37 @@ class SleepTracker:
         self.bus.publish(Event(EventType.SLEEP_MORNING_REPORT, payload=report))
         self.night = _NightState()
         return report
+
+    def night_score(self) -> int:
+        total = sum(self.night.samples.values()) or 1
+        return int(self.night.samples.get("left", 0) / total * 100)
+
+    def to_ctx(self) -> dict:
+        n = self.night
+        elapsed = int(time.time() - n.started_at) if n.started_at else 0
+        hrs = elapsed // 3600
+        mins = (elapsed % 3600) // 60
+        total = sum(n.samples.values()) or 1
+        left_pct = int(n.samples.get("left", 0) / total * 100)
+        right_pct = int(n.samples.get("right", 0) / total * 100)
+        back_pct = int(n.samples.get("back", 0) / total * 100)
+        front_pct = int(n.samples.get("front", 0) / total * 100)
+        gap_left = 0
+        if n.last_nudge > 0:
+            gap_left = max(
+                0,
+                int(TUNABLES.sleep_nudge_gap_seconds - (time.time() - n.last_nudge)),
+            )
+        return {
+            "sleep_elapsed": f"{hrs}h {mins:02d}m" if hrs else f"{mins}m",
+            "sleep_nudges": n.nudges,
+            "sleep_nudges_max": TUNABLES.sleep_max_nudges,
+            "sleep_left_pct": left_pct,
+            "sleep_right_pct": right_pct,
+            "sleep_back_pct": back_pct,
+            "sleep_front_pct": front_pct,
+            "sleep_score": self.night_score(),
+            "sleep_wear_side": TUNABLES.wear_side,
+            "sleep_nudge_cooldown_s": gap_left,
+            "sleep_window": f"{TUNABLES.sleep_window_start}-{TUNABLES.sleep_window_end}",
+        }

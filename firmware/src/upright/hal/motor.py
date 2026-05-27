@@ -1,4 +1,4 @@
-"""Coin vibration motor on GPIO 5 (via 2N2222 + 1N4001)."""
+"""Coin vibration motor on GPIO 22 / physical pin 15 (via driver transistor)."""
 
 from __future__ import annotations
 

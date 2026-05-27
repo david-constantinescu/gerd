@@ -220,7 +220,7 @@ class ModeManager:
         elif btn == "b":
             if pattern == "long":
                 self._on_b_long(now)
-            elif pattern == "single":
+            elif pattern in ("single", "double", "triple"):
                 self._on_b_short(now)
         self._paint_now()
 
@@ -319,7 +319,8 @@ class ModeManager:
             self.menu.index = 0
         elif action == "sleep":
             self.menu.close()
-            self._transition(State.PRE_SLEEP)
+            self.sleep.begin_night()
+            self._transition(State.SLEEPING)
         elif action == "about":
             self.menu.screen = "about"
             self.menu.index = 0
@@ -549,6 +550,7 @@ class ModeManager:
             "battery_text": "LOW" if self.ctx.battery_low else f"{self.ctx.battery_pct}%",
             "posture_pct": float(int(self.ctx.posture_pct // 2) * 2),
             "pitch": round(self.ctx.pitch, 1),
+            "roll": round(self.ctx.roll, 1),
             "alert_active": self.ctx.alert_active,
             "level": self.ctx.alert_level,
             "last_meal_text": last_meal_text,
@@ -561,7 +563,8 @@ class ModeManager:
                 else "—"
             ),
             "position": self.sleep.night.current_position,
-            "score": 0,
+            **self.sleep.to_ctx(),
+            "score": self.sleep.night_score(),
             **self.ctx.food_result,
             "step": ["Stand upright", "Lean forward", "Lie on left"][
                 min(2, self.ctx.calibration_step)
@@ -616,6 +619,9 @@ class ModeManager:
                     self._handle_button(ev)
                 elif ev.type == EventType.MED_REMINDER:
                     self._handle_med_reminder(ev)
+                elif ev.type == EventType.NUDGE_SENT:
+                    if TUNABLES.haptic_alerts_enabled:
+                        self.alerts.motor.buzz_async("strong")
                 elif ev.type == EventType.SHUTDOWN:
                     break
 

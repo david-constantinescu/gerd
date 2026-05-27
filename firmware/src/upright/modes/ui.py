@@ -269,10 +269,38 @@ def draw_booting(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
 def draw_sleep(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
-    theme.title_bar(d, "SLEEP MODE", w)
+    pre = ctx.get("fsm_state") == "pre_sleep"
+    theme.title_bar(d, "PRE-SLEEP" if pre else "SLEEP MODE", w)
     pos = (ctx.get("position", "-") or "-").upper()
-    d.text((4, 32), f"Position: {pos}", fill=theme._C_FG)
-    d.text((4, 48), "Goodnight", fill=theme._C_DIM)
+    elapsed = ctx.get("sleep_elapsed", "0m")
+    nudges = int(ctx.get("sleep_nudges", 0))
+    n_max = int(ctx.get("sleep_nudges_max", 3))
+    score = int(ctx.get("sleep_score", 0))
+    left_p = int(ctx.get("sleep_left_pct", 0))
+    right_p = int(ctx.get("sleep_right_pct", 0))
+    back_p = int(ctx.get("sleep_back_pct", 0))
+    roll = ctx.get("roll", 0.0)
+    wear = (ctx.get("sleep_wear_side", "left") or "left")[:6]
+    cooldown = int(ctx.get("sleep_nudge_cooldown_s", 0))
+    window = ctx.get("sleep_window", "")
+
+    y = 24
+    if pre:
+        d.text((4, y), "Lie on LEFT side", fill=theme._C_ACCENT)
+        y += 14
+        d.text((4, y), f"Window {window}", fill=theme._C_DIM)
+        y += 14
+    d.text((4, y), f"Now: {pos}  ({elapsed})", fill=theme._C_FG)
+    y += 14
+    d.text((4, y), f"Score {score}%  Nudges {nudges}/{n_max}", fill=theme._C_FG)
+    y += 14
+    d.text((4, y), f"L{left_p} R{right_p} B{back_p}%", fill=theme._C_DIM)
+    y += 14
+    d.text((4, y), f"Roll {roll:+.0f}  clip:{wear}", fill=theme._C_DIM)
+    if pos != "LEFT" and nudges < n_max and cooldown == 0:
+        d.text((4, min(h - 14, y + 14)), "Nudge if not left", fill=theme._C_WARN)
+    elif cooldown > 0:
+        d.text((4, min(h - 14, y + 14)), f"Nudge in {cooldown}s", fill=theme._C_DIM)
 
 
 _MENU_DRAWERS = {
@@ -325,6 +353,7 @@ def render(state: State, ctx: dict, oled) -> None:
     elif state in (State.CALIBRATING, State.ONBOARDING):
         draw_calibrating(d, draw_ctx)
     elif state in (State.PRE_SLEEP, State.SLEEPING):
+        draw_ctx["fsm_state"] = state.value
         draw_sleep(d, draw_ctx)
     else:
         draw_watch_face(d, draw_ctx)

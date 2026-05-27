@@ -39,7 +39,7 @@ dtoverlay=hifiberry-dac
 |-----------------|-----------|------------------------------------------|
 | Button A (back) | 20        | active low, internal pull-up             |
 | Button B (menu) | 21        | active low, internal pull-up             |
-| Vibration motor | 5         | via 2N2222 base + 1N4001 flyback diode   |
+| Vibration motor | 22        | physical pin 15 (motor IN)               |
 | LiPo alert      | 4         | Pimoroni Zero LiPo (active low)          |
 
 No rotary encoder on this build. UI controls: see `oled-mockups.md`.
