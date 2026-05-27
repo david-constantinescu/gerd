@@ -52,7 +52,7 @@ def _map_pattern(state: _BtnState, pattern: str) -> str:
 
 def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
     states = [
-        _BtnState("a", PIN_BUTTON_A, map_short="long", map_long="long", map_verylong="verylong"),
+        _BtnState("a", PIN_BUTTON_A, map_short="single", map_long="long", map_verylong="verylong"),
         _BtnState("b", PIN_BUTTON_B, map_short="single", map_long="double", map_verylong="triple"),
     ]
     for st in states:

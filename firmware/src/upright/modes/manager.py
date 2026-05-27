@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from ..config import TUNABLES
+from ..config import DISPLAY_MIN_REFRESH_SECONDS, TUNABLES
 from ..events import Event, EventBus, EventType
 from ..hal import imu
 from ..hal.display import Display
@@ -68,6 +68,7 @@ class ModeManager:
         self.ctx = Context()
         self._last_render = 0.0
         self._last_sched_tick = 0.0
+        self._last_view_sig: tuple | None = None
         self._display_demo = os.environ.get("UPRIGHT_DISPLAY_DEMO", "").lower() in (
             "1",
             "true",
@@ -255,13 +256,35 @@ class ModeManager:
 
     # -------------------------------------------------- ctx → view
 
+    def _view_signature(self, state: State, ctx: dict) -> tuple:
+        """Stable key for deciding whether the TFT needs a new frame."""
+        return (
+            state.value,
+            datetime.now().strftime("%H:%M"),
+            ctx.get("battery_text"),
+            int(ctx.get("posture_pct", 0) // 10) * 10,  # 10% buckets
+            int(round(ctx.get("pitch", 0) / 5.0) * 5),  # 5° buckets
+            ctx.get("alert_active"),
+            ctx.get("level"),
+            ctx.get("meal_age_bucket"),
+            int(ctx.get("progress", 0.0) * 10),  # 10% buckets
+            ctx.get("name"),
+            ctx.get("risk"),
+        )
+
     def _view_ctx(self) -> dict:
         meal = self.db.last_meal()
         last_meal_text = "—"
+        meal_age_bucket = -1
         if meal:
             dt = datetime.fromtimestamp(meal["ts"])
             ago = datetime.now() - dt
-            last_meal_text = f"{int(ago.total_seconds() // 60)}m ago"
+            mins = int(ago.total_seconds() // 60)
+            meal_age_bucket = mins // 15  # signature updates every 15 min
+            if mins < 60:
+                last_meal_text = f"{meal_age_bucket * 15}m ago"
+            else:
+                last_meal_text = f"{mins // 60}h ago"
         remaining = ""
         progress = 0.0
         if self.ctx.meal_started_at:
@@ -280,6 +303,7 @@ class ModeManager:
             "alert_active": self.ctx.alert_active,
             "level": self.ctx.alert_level,
             "last_meal_text": last_meal_text,
+            "meal_age_bucket": meal_age_bucket,
             "remaining": remaining,
             "progress": progress,
             "meal_at_text": (
@@ -301,6 +325,15 @@ class ModeManager:
         self._transition(State.IDLE)
         if self._display_demo:
             log.info("display demo mode enabled — holding SYSTEM OK screen")
+        # Paint once immediately so the panel is not blank after boot.
+        try:
+            boot_state = State.IDLE if self._display_demo else self.ctx.state
+            boot_view = self._view_ctx()
+            ui.render(boot_state, boot_view, self.oled)
+            self._last_view_sig = self._view_signature(boot_state, boot_view)
+            self._last_render = time.time()
+        except Exception as e:  # pragma: no cover
+            log.warning("initial render failed: %s", e)
         while not stop.is_set():
             ev = self.bus.get(timeout=0.2)
             if ev is not None:
@@ -325,15 +358,24 @@ class ModeManager:
                 self._maybe_exit_post_meal()
                 self._maybe_enter_sleep()
 
-            # render at ~2.5 Hz; Display.show() skips unchanged frames.
-            if now - self._last_render > 0.4:
+            # Full-frame SPI refresh only when content meaningfully changes, and
+            # at most once per DISPLAY_MIN_REFRESH_SECONDS (clock via minute in sig).
+            state = State.IDLE if self._display_demo else self.ctx.state
+            view = self._view_ctx()
+            sig = self._view_signature(state, view)
+            changed = sig != self._last_view_sig
+            urgent = False
+            if changed and self._last_view_sig is not None:
+                prev = self._last_view_sig
+                urgent = prev[0] != sig[0] or prev[5] != sig[5]  # FSM state or slouch alert
+            interval_ok = now - self._last_render >= DISPLAY_MIN_REFRESH_SECONDS
+            if changed and (interval_ok or urgent):
                 self._last_render = now
+                self._last_view_sig = sig
                 try:
-                    state = State.IDLE if self._display_demo else self.ctx.state
-                    ui.render(state, self._view_ctx(), self.oled)
+                    ui.render(state, view, self.oled)
                 except Exception as e:  # pragma: no cover
                     log.warning("render failed: %s", e)
-                self.oled.auto_blank_tick()
 
         self.sleep.end_night()
         self.db.flush()

@@ -64,6 +64,9 @@ OLED_WIDTH = 128
 OLED_HEIGHT = 64
 OLED_AUTO_BLANK_SECONDS = 0  # keep SPI TFT on continuously
 
+# SPI TFT: minimum seconds between full-frame paints (reduces visible scan “wave”).
+DISPLAY_MIN_REFRESH_SECONDS = 120.0
+
 
 # --- Tunables (overridable via config.json) --------------------------------
 

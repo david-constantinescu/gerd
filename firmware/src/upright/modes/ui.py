@@ -46,41 +46,47 @@ def draw_idle_mono(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
 
 def draw_idle_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w = int(ctx.get("_w", 160))
+    h = int(ctx.get("_h", 128))
     now = datetime.now().strftime("%H:%M")
     bat = ctx.get("battery_text", "--")
     posture = ctx.get("posture_pct", 0.0)
     pitch = ctx.get("pitch", 0.0)
     last_meal = ctx.get("last_meal_text", "—")
     d.text((4, 4), f"{now}", fill=_C_FG)
-    d.text((70, 4), f"Bat {bat}", fill=_C_ACCENT)
+    d.text((max(4, w - 62), 4), f"Bat {bat}", fill=_C_ACCENT)
     d.text((4, 22), "Posture", fill=_C_FG)
-    _bar_rgb(d, 4, 36, 118, 10, posture / 100.0)
+    _bar_rgb(d, 4, 36, max(20, w - 8), 10, posture / 100.0)
     d.text((4, 52), f"Pitch {pitch:+.1f} deg", fill=_C_FG)
     d.text((4, 68), f"Meal {last_meal}", fill=_C_FG)
-    d.text((4, 96), "A meal  B symptom", fill=_C_WARN)
+    d.text((4, max(4, h - 32)), "A meal  B symptom", fill=_C_WARN)
 
 
 def draw_alert_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w = int(ctx.get("_w", 160))
     now = datetime.now().strftime("%H:%M")
     pitch = ctx.get("pitch", 0.0)
     posture = ctx.get("posture_pct", 0.0)
     d.text((4, 4), f"{now} SLOUCH", fill=_C_WARN)
-    _bar_rgb(d, 4, 28, 118, 12, posture / 100.0)
+    _bar_rgb(d, 4, 28, max(20, w - 8), 12, posture / 100.0)
     d.text((4, 48), f"Pitch {pitch:+.1f}", fill=_C_FG)
     d.text((4, 68), "Straighten up!", fill=_C_WARN)
 
 
 def draw_post_meal_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w = int(ctx.get("_w", 160))
     now = datetime.now().strftime("%H:%M")
     remaining = ctx.get("remaining", "0:00")
     frac = ctx.get("progress", 0.0)
     d.text((4, 4), f"{now} POST-MEAL", fill=_C_ACCENT)
     d.text((4, 28), f"Stay up {remaining}", fill=_C_FG)
-    _bar_rgb(d, 4, 48, 118, 10, frac)
+    _bar_rgb(d, 4, 48, max(20, w - 8), 10, frac)
 
 
 def draw_system_ok_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    d.rectangle((0, 0, 127, 159), fill=(0, 40, 90))
+    w = int(ctx.get("_w", 160))
+    h = int(ctx.get("_h", 128))
+    d.rectangle((0, 0, w - 1, h - 1), fill=(0, 40, 90))
     d.text((8, 12), "UPRIGHT", fill=(255, 255, 255))
     d.text((8, 30), "SYSTEM OK", fill=(80, 255, 120))
     d.text((8, 50), "DISPLAY + SPI", fill=(255, 255, 0))
@@ -89,9 +95,11 @@ def draw_system_ok_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((8, 92), "DEMO MODE", fill=_C_WARN)
 
 
-def draw_booting_rgb(d: ImageDraw.ImageDraw, _ctx: dict) -> None:
-    d.text((8, 48), "UPRIGHT", fill=_C_FG)
-    d.text((8, 68), "starting...", fill=_C_ACCENT)
+def draw_booting_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w = int(ctx.get("_w", 160))
+    h = int(ctx.get("_h", 128))
+    d.text((8, max(8, h // 2 - 20)), "UPRIGHT", fill=_C_FG)
+    d.text((8, max(24, h // 2)), "starting...", fill=_C_ACCENT)
 
 
 def draw_idle(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -185,13 +193,14 @@ def render(state: State, ctx: dict, oled) -> None:
     if color:
         img = Image.new("RGB", (w, h), _C_BG)
         d = ImageDraw.Draw(img)
+        draw_ctx = {**ctx, "_w": w, "_h": h}
         if ctx.get("display_demo"):
-            draw_system_ok_rgb(d, ctx)
+            draw_system_ok_rgb(d, draw_ctx)
         elif state == State.IDLE and ctx.get("alert_active"):
-            draw_alert_rgb(d, ctx)
+            draw_alert_rgb(d, draw_ctx)
         else:
             drawer = _RGB_DRAWERS.get(state, draw_booting_rgb)
-            drawer(d, ctx)
+            drawer(d, draw_ctx)
         oled.show(img)
         return
 

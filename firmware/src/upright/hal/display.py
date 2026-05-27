@@ -6,7 +6,6 @@ import json
 import logging
 import threading
 import time
-import zlib
 from pathlib import Path
 from typing import Any
 
@@ -294,8 +293,12 @@ class _AdafruitST7735:
                 raise ValueError(f"board pin {attr} not available")
             return getattr(board, attr)
 
-        req_w = int(cfg["width"])
-        req_h = int(cfg["height"])
+        # UI framebuffer size (landscape) vs physical panel size (portrait 128x160).
+        self.width = int(cfg["width"])
+        self.height = int(cfg["height"])
+        panel_w = int(cfg.get("panel_width", 128))
+        panel_h = int(cfg.get("panel_height", 160))
+        rot = int(cfg.get("rotate", 90))
 
         spi = board.SPI()
         cs_name = "CE0" if int(cfg.get("device", 0)) == 0 else "CE1"
@@ -310,28 +313,24 @@ class _AdafruitST7735:
             cs=cs,
             dc=dc,
             rst=rst,
-            baudrate=int(cfg.get("bus_speed_hz", 8_000_000)),
-            width=req_w,
-            height=req_h,
-            rotation=int(cfg.get("rotate", 0)),
+            baudrate=int(cfg.get("bus_speed_hz", 2_000_000)),
+            width=panel_w,
+            height=panel_h,
+            rotation=rot,
             x_offset=int(cfg.get("x_offset", 0)),
             y_offset=int(cfg.get("y_offset", 0)),
         )
-        self.width = req_w
-        self.height = req_h
 
     def display(self, image) -> None:
+        from PIL import Image
+
         target = image.convert("RGB")
         if target.size != (self.width, self.height):
-            from PIL import Image
-
             target = target.resize((self.width, self.height), Image.NEAREST)
         if self._swap_rb:
-            from PIL import Image
-
             r, g, b = target.split()
             target = Image.merge("RGB", (b, g, r))
-        self._disp.image(target, rotation=0)
+        self._disp.image(target)
 
     def clear(self) -> None:
         from PIL import Image
@@ -521,7 +520,6 @@ class Display:
         self._dry_run = dry_run
         self._last_show = 0.0
         self._blanked = False
-        self._last_crc: int | None = None
         self.width = OLED_WIDTH
         self.height = OLED_HEIGHT
 
@@ -537,8 +535,6 @@ class Display:
 
         if self._cfg:
             try:
-                self.width = int(self._cfg["width"])
-                self.height = int(self._cfg["height"])
                 iface = self._cfg.get("interface")
                 if iface == "spi":
                     self._force_backlight()
@@ -547,12 +543,15 @@ class Display:
                     self._device = _open_framebuffer(self._cfg)
                 else:
                     self._device = _open_i2c(self._cfg)
+                self.width = int(getattr(self._device, "width", self._cfg["width"]))
+                self.height = int(getattr(self._device, "height", self._cfg["height"]))
                 log.info(
-                    "display: %s %dx%d (%s)",
+                    "display: %s %dx%d (%s) rotate=%s",
                     self._cfg.get("driver"),
                     self.width,
                     self.height,
                     self._cfg.get("interface"),
+                    self._cfg.get("rotate", 0),
                 )
             except Exception as e:
                 log.error("display init failed (%s)", e)
@@ -599,15 +598,10 @@ class Display:
             from PIL import Image
 
             out = image.resize((self.width, self.height))
-        crc = zlib.crc32(out.tobytes())
-        if self._last_crc == crc:
-            # Skip redundant SPI writes: reduces tearing/flicker and CPU usage.
-            return
         self._last_show = time.time()
         self._blanked = False
         with _DISPLAY_LOCK:
             self._device.display(out)
-        self._last_crc = crc
 
     def auto_blank_tick(self) -> None:
         if self._blanked or self._device is None:
@@ -623,7 +617,6 @@ class Display:
         if self._device is not None:
             self._device.clear()
         self._blanked = True
-        self._last_crc = None
 
 
 # Backwards compatibility

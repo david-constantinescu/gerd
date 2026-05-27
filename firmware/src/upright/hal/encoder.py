@@ -1,4 +1,4 @@
-"""EC11 rotary encoder. Hardware debounce via 10 nF caps on CLK/DT is mandatory."""
+"""EC11 rotary encoder via lgpio (same stack as buttons; avoids RPi.GPIO vs SPI)."""
 
 from __future__ import annotations
 
@@ -8,32 +8,44 @@ import time
 
 from ..config import PIN_ENCODER_CLK, PIN_ENCODER_DT, PIN_ENCODER_SW
 from ..events import Event, EventBus, EventType
+from .gpio_lgpio import claim_input, read_gpio
 
 log = logging.getLogger("hal.encoder")
 
+_ROTATE_DEBOUNCE_S = 0.04
 
-def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover - hardware
-    import RPi.GPIO as GPIO  # type: ignore[import-not-found]
 
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(PIN_ENCODER_CLK, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(PIN_ENCODER_DT, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(PIN_ENCODER_SW, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
+    for pin in (PIN_ENCODER_CLK, PIN_ENCODER_DT, PIN_ENCODER_SW):
+        claim_input(pin)
 
-    last_clk = GPIO.input(PIN_ENCODER_CLK)
-    last_sw = 1
+    last_clk = read_gpio(PIN_ENCODER_CLK)
+    last_sw = read_gpio(PIN_ENCODER_SW)
+    last_rotate = 0.0
+
+    log.info(
+        "encoder on GPIO CLK=%s DT=%s SW=%s",
+        PIN_ENCODER_CLK,
+        PIN_ENCODER_DT,
+        PIN_ENCODER_SW,
+    )
+
     while not stop.is_set():
-        clk = GPIO.input(PIN_ENCODER_CLK)
-        dt = GPIO.input(PIN_ENCODER_DT)
-        if clk != last_clk and clk == 0:
-            direction = "cw" if dt != clk else "ccw"
-            evt_bus.publish(Event(EventType.ENCODER_ROTATE, payload={"dir": direction}))
-        last_clk = clk
-        sw = GPIO.input(PIN_ENCODER_SW)
+        clk = read_gpio(PIN_ENCODER_CLK)
+        dt = read_gpio(PIN_ENCODER_DT)
+        if clk != last_clk:
+            now = time.time()
+            if now - last_rotate >= _ROTATE_DEBOUNCE_S:
+                direction = "cw" if dt != clk else "ccw"
+                evt_bus.publish(Event(EventType.ENCODER_ROTATE, payload={"dir": direction}))
+                last_rotate = now
+            last_clk = clk
+
+        sw = read_gpio(PIN_ENCODER_SW)
         if last_sw == 1 and sw == 0:
             evt_bus.publish(Event(EventType.ENCODER_CLICK))
         last_sw = sw
-        time.sleep(0.001)
+        time.sleep(0.002)
 
 
 def _stub_loop(evt_bus: EventBus, stop: threading.Event) -> None:
@@ -43,11 +55,16 @@ def _stub_loop(evt_bus: EventBus, stop: threading.Event) -> None:
 
 def start_thread(evt_bus: EventBus, *, dry_run: bool) -> threading.Thread:
     stop = threading.Event()
-    target = (
-        (lambda: _stub_loop(evt_bus, stop))
-        if dry_run
-        else (lambda: _loop(evt_bus, stop))
-    )
+    if dry_run:
+        target = lambda: _stub_loop(evt_bus, stop)  # noqa: E731
+    else:
+        try:
+            for pin in (PIN_ENCODER_CLK, PIN_ENCODER_DT, PIN_ENCODER_SW):
+                claim_input(pin)
+            target = lambda: _loop(evt_bus, stop)  # noqa: E731
+        except Exception as e:
+            log.error("encoder init failed (%s)", e)
+            target = lambda: _stub_loop(evt_bus, stop)  # noqa: E731
     th = threading.Thread(target=target, name="hal.encoder", daemon=True)
     th.stop = stop  # type: ignore[attr-defined]
     th.start()
