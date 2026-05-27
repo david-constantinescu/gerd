@@ -15,6 +15,7 @@ from ..config import (
     OLED_AUTO_BLANK_SECONDS,
     OLED_HEIGHT,
     OLED_WIDTH,
+    SPI_DISPLAY_BL,
     SPI_DISPLAY_DC,
     SPI_DISPLAY_DEVICE,
     SPI_DISPLAY_HEIGHT,
@@ -45,7 +46,7 @@ _SPI_CANDIDATES: list[dict[str, Any]] = [
         "v_offset": 0,
         "port": SPI_DISPLAY_PORT,
         "device": SPI_DISPLAY_DEVICE,
-        "bus_speed_hz": 2_000_000,
+        "bus_speed_hz": 1_000_000,
     },
     {
         "driver": "st7735",
@@ -109,7 +110,7 @@ def _open_spi(cfg: dict[str, Any]) -> Any:
         device=int(cfg.get("device", 0)),
         gpio_DC=int(cfg["dc"]),
         gpio_RST=int(cfg["rst"]),
-        bus_speed_hz=int(cfg.get("bus_speed_hz", 2_000_000)),
+        bus_speed_hz=int(cfg.get("bus_speed_hz", 1_000_000)),
     )
     driver = cfg["driver"]
     w, h = int(cfg["width"]), int(cfg["height"])
@@ -327,6 +328,7 @@ class Display:
                 self.height = int(self._cfg["height"])
                 iface = self._cfg.get("interface")
                 if iface == "spi":
+                    self._force_backlight()
                     self._device = _open_spi(self._cfg)
                 elif iface == "fb":
                     self._device = _open_framebuffer(self._cfg)
@@ -344,6 +346,19 @@ class Display:
                 self._device = None
         else:
             log.error("no display found — running headless")
+
+    def _force_backlight(self) -> None:
+        """Best-effort TFT backlight enable (no-op if BL pin not wired)."""
+        if SPI_DISPLAY_BL < 0:
+            return
+        try:
+            from .gpio_lgpio import claim_output, write
+
+            claim_output(SPI_DISPLAY_BL, initial=1)
+            write(SPI_DISPLAY_BL, 1)
+            log.info("display backlight forced on via GPIO %s", SPI_DISPLAY_BL)
+        except Exception as e:
+            log.debug("display backlight pin unavailable: %s", e)
 
     @property
     def color(self) -> bool:

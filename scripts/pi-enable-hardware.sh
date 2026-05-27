@@ -18,12 +18,13 @@ CFG=/boot/firmware/config.txt
 OVERLAY=/boot/firmware/upright-display.conf
 [[ -f $OVERLAY ]] || OVERLAY=/boot/config/upright-display.conf
 
-echo "[upright] enabling I2C + SPI + I2S in $CFG"
+echo "[upright] enabling I2C + SPI in $CFG (I2S disabled for GPIO20/21 buttons)"
 grep -q '^dtparam=i2c_arm=on' "$CFG" || echo 'dtparam=i2c_arm=on' >> "$CFG"
 grep -q '^dtparam=spi=on'     "$CFG" || echo 'dtparam=spi=on'     >> "$CFG"
 grep -q '^dtoverlay=spi0-1cs' "$CFG" || echo 'dtoverlay=spi0-1cs' >> "$CFG"
-grep -q '^dtparam=i2s=on'     "$CFG" || echo 'dtparam=i2s=on'     >> "$CFG"
-grep -q '^dtoverlay=hifiberry-dac' "$CFG" || echo 'dtoverlay=hifiberry-dac' >> "$CFG"
+# Disable I2S/HifiBerry overlays — these claim GPIO20/21 used by buttons.
+sed -i '/^dtparam=i2s=on/s/^/# disabled for buttons: /' "$CFG" || true
+sed -i '/^dtoverlay=hifiberry-dac/s/^/# disabled for buttons: /' "$CFG" || true
 
 # Bit-bang I²C on GPIO 10/11 breaks SPI display (MOSI/SCLK) — remove if present.
 if grep -q 'i2c-gpio' "$CFG" 2>/dev/null; then

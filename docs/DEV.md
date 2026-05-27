@@ -3,6 +3,9 @@
 Code lives on the Mac, is pushed to GitHub, and pulled on the Pi. The Pi is
 the only place that can touch real hardware — the Mac runs the tests.
 
+For remote SSH/service troubleshooting and run commands, see
+[`PI_REMOTE_RUNBOOK.md`](PI_REMOTE_RUNBOOK.md).
+
 ## One-time setup (Mac)
 
 ```bash
