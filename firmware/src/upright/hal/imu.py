@@ -14,6 +14,7 @@ import time
 
 from ..config import I2C_ADDR_MPU6050, TUNABLES
 from ..events import Event, EventBus, EventType
+from .i2c_probe import log_scan_results, scan_buses
 
 log = logging.getLogger("hal.imu")
 
@@ -151,6 +152,8 @@ def start_thread(evt_bus: EventBus, *, dry_run: bool) -> threading.Thread:
         target = lambda: _dev_stub_loop(evt_bus, stop)  # noqa: E731
         log.info("starting IMU dev stub thread")
     else:
+        found = scan_buses()
+        log_scan_results(found)
         try:
             bus_obj, addr = _open_bus()
             target = lambda: _loop(bus_obj, addr, evt_bus, stop)  # noqa: E731

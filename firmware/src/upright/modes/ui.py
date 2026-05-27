@@ -32,7 +32,8 @@ def _posture_status(pct: float, alert: bool) -> str:
 def _draw_battery(d: ImageDraw.ImageDraw, ctx: dict, w: int) -> None:
     pct = int(ctx.get("battery_pct", 100))
     low = bool(ctx.get("battery_low", False))
-    theme.battery_icon(d, max(4, w - 34), 4, pct, low=low)
+    powered = bool(ctx.get("battery_powered", False))
+    theme.battery_icon(d, max(4, w - 34), 4, pct, low=low, powered=powered)
 
 
 def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -60,7 +61,7 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         return
 
     d.text((4, 4), now, fill=theme._C_FG)
-    d.text((52, 4), status, fill=theme._C_ACCENT)
+    d.text((66, 4), status, fill=theme._C_ACCENT)
     _draw_battery(d, ctx, w)
     if bpm != "--":
         d.text((max(4, w - 62), 18), f"{bpm} bpm", fill=theme._C_DIM)

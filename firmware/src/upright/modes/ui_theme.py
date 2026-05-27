@@ -11,6 +11,7 @@ _C_DIM = (180, 180, 180)
 _C_ACCENT = (220, 220, 220)
 _C_WARN = (180, 180, 180)
 _C_OK = (220, 220, 220)
+_C_BAT_WARN = (255, 196, 0)
 
 
 def new_frame(w: int, h: int) -> tuple[Image.Image, ImageDraw.ImageDraw]:
@@ -58,6 +59,29 @@ def footer_hint(d: ImageDraw.ImageDraw, text: str, h: int) -> None:
     d.text((4, max(4, h - 22)), text[:28], fill=_C_DIM)
 
 
+def _draw_lightning_inside(
+    d: ImageDraw.ImageDraw,
+    ix: int,
+    iy: int,
+    inner_right: int,
+    inner_bottom: int,
+) -> None:
+    """Black ⚡ centered inside the battery cavity."""
+    cx = (ix + inner_right) // 2
+    cy = (iy + inner_bottom) // 2
+    d.polygon(
+        [
+            (cx + 1, cy - 3),
+            (cx - 2, cy),
+            (cx, cy),
+            (cx - 1, cy + 3),
+            (cx + 2, cy - 1),
+            (cx, cy - 1),
+        ],
+        fill=(0, 0, 0),
+    )
+
+
 def battery_icon(
     d: ImageDraw.ImageDraw,
     x: int,
@@ -65,11 +89,23 @@ def battery_icon(
     pct: int,
     *,
     low: bool = False,
+    powered: bool = False,
 ) -> None:
-    """Horizontal battery: outline, level fill, centered ``NN%`` in black."""
+    """Horizontal battery — percent label, powered ⚡, or low-battery warning."""
     pct = max(0, min(100, int(pct)))
-    outline = _C_WARN if low else _C_FG
-    fill_col = _C_WARN if low else _C_ACCENT
+    if low:
+        outline = _C_BAT_WARN
+        fill_col = (200, 150, 0)
+        show_pct = True
+    elif powered:
+        outline = _C_FG
+        fill_col = _C_ACCENT
+        pct = 100
+        show_pct = False
+    else:
+        outline = _C_FG
+        fill_col = _C_ACCENT
+        show_pct = True
     tip_w = 3
     body_w = 30
     body_h = 13
@@ -94,16 +130,24 @@ def battery_icon(
     if level_w > 0:
         d.rectangle((ix, iy, ix + level_w, inner_bottom), fill=fill_col)
 
-    # Percent label on a small light chip so black text stays readable
-    label = f"{pct}%"
+    if powered:
+        _draw_lightning_inside(d, ix, iy, inner_right, inner_bottom)
+        return
+
+    if not show_pct:
+        return
+
+    label = f"{pct}%" if not low else "!"
     bbox = d.textbbox((0, 0), label)
     tw = bbox[2] - bbox[0]
     th = bbox[3] - bbox[1]
     tx = ix + max(0, (inner_w - tw) // 2)
     ty = iy + max(0, (inner_bottom - iy - th) // 2 - 4)
     chip_pad = 1
+    chip_fill = (255, 220, 120) if low else (235, 235, 235)
+    text_fill = (0, 0, 0)
     d.rectangle(
         (tx - chip_pad, ty - chip_pad, tx + tw + chip_pad, ty + th + chip_pad),
-        fill=(235, 235, 235),
+        fill=chip_fill,
     )
-    d.text((tx, ty), label, fill=(0, 0, 0))
+    d.text((tx, ty), label, fill=text_fill)

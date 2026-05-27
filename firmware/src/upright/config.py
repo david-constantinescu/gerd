@@ -75,10 +75,13 @@ DISPLAY_PITCH_REFRESH_SECONDS = 1.0
 
 @dataclass
 class Tunables:
-    # Posture
-    pitch_alert_deg: float = 15.0
-    pitch_alert_strict_deg: float = 10.0  # POST_MEAL
-    pitch_sustained_seconds: float = 60.0
+    # Posture — tuned for GERD (see reference docs/posture-detection.md)
+    # Daytime: trunk slouch ~12°+; post-meal: stricter ~8°; lying flat ~55°+ is worst.
+    pitch_alert_deg: float = 12.0
+    pitch_alert_strict_deg: float = 8.0  # POST_MEAL slouch
+    pitch_sustained_seconds: float = 45.0
+    lying_flat_deg: float = 55.0  # torso near horizontal (post-meal reflux risk)
+    lying_sustained_seconds: float = 20.0  # after lying_grace_seconds
     posture_sample_hz_idle: float = 2.0
     posture_sample_hz_post_meal: float = 5.0
     posture_sample_hz_sleep: float = 0.03  # one sample every ~33s

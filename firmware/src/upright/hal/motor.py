@@ -15,6 +15,8 @@ PATTERNS: dict[str, list[float]] = {
     "gentle": [0.10, 0.0],
     "moderate": [0.10, 0.10, 0.10, 0.0],
     "strong": [0.20, 0.10, 0.20, 0.10, 0.20, 0.0],
+    # Longest on-time pulses the GPIO driver allows (coin motor at full rail).
+    "max": [0.9, 0.08, 0.9, 0.08, 0.9, 0.08, 0.9, 0.0],
 }
 
 

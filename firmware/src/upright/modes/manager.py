@@ -38,6 +38,7 @@ class Context:
     rmssd: float | None = None
     battery_pct: int = 100
     battery_low: bool = False
+    battery_source: str = "unknown"
     posture_pct: float = 100.0
     slouch_started_at: float = 0.0
     alert_level: int = 0
@@ -77,6 +78,8 @@ class ModeManager:
         self._last_pitch_render = 0.0
         self._food_preview = None
         self._pitch_display: float | None = None
+        self._battery_low_prev = False
+        self._lying_since: float = 0.0
         self._display_demo = os.environ.get("UPRIGHT_DISPLAY_DEMO", "").lower() in (
             "1",
             "true",
@@ -127,6 +130,14 @@ class ModeManager:
             self.sleep.sample(self.ctx.roll)
             return
 
+        lying = abs(self.ctx.pitch) >= TUNABLES.lying_flat_deg
+        if lying:
+            if self._lying_since == 0.0:
+                self._lying_since = time.time()
+        else:
+            self._lying_since = 0.0
+            self.alerts.reset("lying_post_meal")
+
         # Posture score: 100% at upright, falls off after dead zone + half threshold.
         adjusted = max(0.0, abs(self.ctx.pitch) - TUNABLES.posture_deadzone_deg)
         deviation = max(0.0, adjusted - threshold / 2)
@@ -134,10 +145,19 @@ class ModeManager:
             0.0, 100.0 - deviation * TUNABLES.posture_pct_slope
         )
 
-        if adjusted > threshold:
+        violation = adjusted > threshold
+        sustained_limit = TUNABLES.pitch_sustained_seconds
+        if self.ctx.state == State.POST_MEAL and lying:
+            violation = True
+            escalate_now, _ = self.alerts.lying_down_grace("lying_post_meal")
+            if not escalate_now:
+                violation = False
+            sustained_limit = TUNABLES.lying_sustained_seconds
+
+        if violation:
             if self.ctx.slouch_started_at == 0.0:
                 self.ctx.slouch_started_at = time.time()
-            elif time.time() - self.ctx.slouch_started_at > TUNABLES.pitch_sustained_seconds:
+            elif time.time() - self.ctx.slouch_started_at > sustained_limit:
                 self.ctx.alert_active = True
                 fired = self.alerts.fire(
                     "slouch",
@@ -167,10 +187,19 @@ class ModeManager:
         self.ctx.rmssd = ev.payload.get("rmssd")
 
     def _handle_power(self, ev: Event) -> None:
+        was_low = self.ctx.battery_low
         pct = ev.payload.get("battery_pct")
         if pct is not None:
             self.ctx.battery_pct = int(pct)
         self.ctx.battery_low = bool(ev.payload.get("battery_low", False))
+        self.ctx.battery_source = str(ev.payload.get("battery_source", "unknown"))
+        if self.ctx.battery_low and not was_low:
+            log.warning("battery low — haptic warning")
+            if TUNABLES.haptic_alerts_enabled:
+                self.alerts.motor.buzz_async("max")
+            self._paint_now()
+        elif self.ctx.battery_low != was_low:
+            self._paint_now()
 
     def _handle_button(self, ev: Event) -> None:
         pattern = ev.payload.get("pattern", "")
@@ -469,7 +498,9 @@ class ModeManager:
         base = (
             state.value,
             datetime.now().strftime("%H:%M"),
-            ctx.get("battery_text"),
+            int(ctx.get("battery_pct", 100) // 5) * 5,
+            bool(ctx.get("battery_low")),
+            bool(ctx.get("battery_powered")),
             int(ctx.get("posture_pct", 0) // 10) * 10,
             int(round(float(ctx.get("pitch", 0)) * 2) / 2),
             ctx.get("alert_active"),
@@ -512,6 +543,9 @@ class ModeManager:
             "bpm": f"{int(self.ctx.bpm)}" if self.ctx.bpm else "--",
             "battery_pct": self.ctx.battery_pct,
             "battery_low": self.ctx.battery_low,
+            "battery_source": self.ctx.battery_source,
+            "battery_powered": self.ctx.battery_source == "alert_pin"
+            and not self.ctx.battery_low,
             "battery_text": "LOW" if self.ctx.battery_low else f"{self.ctx.battery_pct}%",
             "posture_pct": float(int(self.ctx.posture_pct // 2) * 2),
             "pitch": round(self.ctx.pitch, 1),
@@ -612,6 +646,8 @@ class ModeManager:
             if changed and self._last_view_sig is not None:
                 prev = self._last_view_sig
                 urgent = prev[0] != sig[0] or prev[5] != sig[5]
+                if len(prev) > 2 and len(sig) > 2 and prev[2] != sig[2]:
+                    urgent = True
                 pitch_due = now - self._last_pitch_render >= DISPLAY_PITCH_REFRESH_SECONDS
                 if len(prev) > 4 and len(sig) > 4 and prev[4] != sig[4] and pitch_due:
                     urgent = True
