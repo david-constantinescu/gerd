@@ -206,6 +206,7 @@ def draw_main_menu(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         y += 18
         if y > h - 24:
             break
+    theme.footer_hint(d, "dbl top: back  dbl bottom: open", h)
 
 
 def draw_meal_confirm(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -412,12 +413,25 @@ def draw_calibrating(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 def draw_booting(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     ver = ctx.get("version", "0.1.0")
+    step = (ctx.get("boot_step") or "Starting")[:18]
+    detail = (ctx.get("boot_detail") or "")[:26]
+    devices = (ctx.get("boot_devices") or "")[:26]
+    frac = max(0.0, min(1.0, float(ctx.get("boot_progress", 0.0))))
+    pct = int(frac * 100)
+
     theme.title_bar(d, "UPRIGHT", w)
-    d.text((8, 28), "GERD wearable", fill=theme._C_DIM)
-    d.text((8, 44), f"v{ver}", fill=theme._C_FG)
-    d.text((8, 60), "starting...", fill=theme._C_ACCENT)
-    frac = float(ctx.get("boot_progress", 0.0))
-    theme.progress_bar(d, 8, 78, max(40, w - 16), 8, frac)
+    d.text((4, 22), f"v{ver}", fill=theme._C_DIM)
+    if ctx.get("demo_mode"):
+        d.text((w - 36, 22), "DEMO", fill=theme._C_WARN)
+    d.text((4, 36), step, fill=theme._C_FG)
+    if detail:
+        d.text((4, 50), detail, fill=theme._C_ACCENT)
+    bar_y = 64 if detail else 52
+    bar_w = max(40, w - 16)
+    theme.progress_bar(d, 8, bar_y, bar_w, 9, frac)
+    d.text((w - 34, bar_y + 1), f"{pct}%", fill=theme._C_FG)
+    if devices:
+        d.text((4, bar_y + 14), devices, fill=theme._C_DIM)
 
 
 def draw_sleep(d: ImageDraw.ImageDraw, ctx: dict) -> None:

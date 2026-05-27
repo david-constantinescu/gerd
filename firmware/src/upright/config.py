@@ -132,6 +132,8 @@ class Tunables:
     language: str = "en"
     demo_mode: bool = False  # synthetic week dataset; see services.demo_seed
     display_blank_minutes: float = 15.0  # blank TFT after inactivity; any button wakes
+    button_double_gap_s: float = 0.40  # pause after last release before classifying tap
+    button_multi_tap_window_s: float = 0.60  # wait this long for a 2nd tap before single
 
     # Web control panel (change on first boot in production)
     web_username: str = "softhoarders"

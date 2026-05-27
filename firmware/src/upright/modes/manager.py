@@ -36,8 +36,6 @@ from .states import State, can_transition
 
 log = logging.getLogger("modes.manager")
 
-BOOT_SCREEN_SECONDS = 2.8
-
 # Screens where bottom tap does nothing (busy or passive).
 _NO_SELECT_SCREENS = frozenset({"food_analysing", "food_preview", "flash"})
 # Screens where any bottom tap dismisses.
@@ -100,8 +98,52 @@ class ModeManager:
             "true",
             "yes",
         )
-        self._boot_until = 0.0
+        self._boot_complete = False
+        self._boot_step = "Starting"
+        self._boot_detail = ""
+        self._boot_progress = 0.0
+        self._boot_devices_line = ""
         self._demo_anim_start = time.time()
+
+    def begin_boot(self) -> None:
+        self._boot_complete = False
+        self._boot_step = "Starting"
+        self._boot_detail = ""
+        self._boot_progress = 0.0
+        self._boot_devices_line = ""
+        self.ctx.state = State.BOOTING
+        self.paint_boot()
+
+    def set_boot_status(
+        self,
+        step: str,
+        detail: str = "",
+        *,
+        progress: float,
+        devices: str | None = None,
+    ) -> None:
+        self._boot_step = step[:22]
+        self._boot_detail = detail[:28]
+        self._boot_progress = max(0.0, min(1.0, float(progress)))
+        if devices is not None:
+            self._boot_devices_line = devices[:28]
+        self.paint_boot()
+
+    def paint_boot(self) -> None:
+        self.oled.note_activity()
+        try:
+            ui.render(State.BOOTING, self._view_ctx(), self.oled)
+            self._last_render = time.time()
+            self._last_view_sig = self._view_signature(State.BOOTING, self._view_ctx())
+        except Exception as e:  # pragma: no cover
+            log.warning("boot render failed: %s", e)
+
+    def finish_boot(self, *, hold_s: float = 0.4) -> None:
+        self.set_boot_status("Ready", "Watch face", progress=1.0)
+        if hold_s > 0:
+            time.sleep(hold_s)
+        self._boot_complete = True
+        self._transition(State.IDLE)
 
     # -------------------------------------------------- transitions
 
@@ -253,6 +295,9 @@ class ModeManager:
     def _handle_button(self, ev: Event) -> None:
         pattern = ev.payload.get("pattern", "")
         btn = ev.payload.get("button", "?")
+        # Mechanical bounce often registers 3 edges; treat as double for navigation.
+        if pattern == "triple":
+            pattern = "double"
         log.info("button %s: %s", btn, pattern)
         now = time.time()
         if self.oled.wake():
@@ -267,7 +312,7 @@ class ModeManager:
         elif btn == "b":
             if pattern == "double":
                 self._on_b_double(now)
-            elif pattern in ("single", "triple"):
+            elif pattern == "single":
                 self._on_b_short(now)
         self._paint_now()
 
@@ -290,16 +335,24 @@ class ModeManager:
             self._transition(State.IDLE)
 
     def _on_a_double(self, now: float) -> None:
+        """Top double-tap: back / dismiss (watch ← main ← submenu)."""
         if self.menu.open and self.menu.screen == "med_prompt":
             self._dismiss_med_prompt()
             return
-        if self.menu.open:
-            # Top double-tap always returns to the watch face.
+        if self.menu.open and self.menu.screen == "main":
             self.menu.close()
+            return
+        if self.menu.open:
+            self._menu_back()
             return
         if self.ctx.state == State.CALIBRATING:
             self._transition(State.IDLE)
             self.menu.close()
+
+    def _go_menu_home(self) -> None:
+        self.menu.open = True
+        self.menu.screen = "main"
+        self.menu.index = 0
 
     def _on_b_short(self, now: float) -> None:
         if self.menu.open and self.menu.screen == "med_prompt":
@@ -310,6 +363,7 @@ class ModeManager:
         self._menu_select(now)
 
     def _on_b_double(self, now: float) -> None:
+        """Bottom double-tap: open main menu from watch, or enter highlighted row."""
         if self.ctx.state == State.CALIBRATING:
             self.ctx.calibration_step = min(2, self.ctx.calibration_step + 1)
             if self.ctx.calibration_step >= 2:
@@ -324,10 +378,13 @@ class ModeManager:
             if self.ctx.state in (State.IDLE, State.POST_MEAL):
                 self.menu.open_main(now)
             return
+        if self.menu.screen == "main":
+            self._menu_select(now)
+            return
         if self.menu.screen == "food_photo":
             self._capture_food(now)
             return
-        self._menu_select(now)
+        self._go_menu_home()
 
     def _menu_select(self, now: float) -> None:
         """Bottom tap — confirm highlighted row (single or double)."""
@@ -646,6 +703,8 @@ class ModeManager:
             state.value,
             datetime.now().strftime("%H:%M"),
             int(ctx.get("boot_progress", 0) * 20) if state == State.BOOTING else 0,
+            ctx.get("boot_step") if state == State.BOOTING else "",
+            ctx.get("boot_detail") if state == State.BOOTING else "",
             int(ctx.get("battery_pct", 100) // 5) * 5,
             bool(ctx.get("battery_low")),
             int(float(ctx.get("battery_low_age_s", 0)) // 2),
@@ -757,11 +816,10 @@ class ModeManager:
                 else ""
             ),
             "version": __version__,
-            "boot_progress": (
-                max(0.0, min(1.0, 1.0 - (self._boot_until - time.time()) / BOOT_SCREEN_SECONDS))
-                if self._boot_until > time.time()
-                else 1.0
-            ),
+            "boot_progress": self._boot_progress,
+            "boot_step": self._boot_step,
+            "boot_detail": self._boot_detail,
+            "boot_devices": self._boot_devices_line,
             "meal_age_bucket": meal_age_bucket,
             "remaining": remaining,
             "progress": progress,
@@ -802,14 +860,11 @@ class ModeManager:
     # -------------------------------------------------- main loop
 
     def run(self, stop: threading.Event) -> None:
-        self._boot_until = time.time() + BOOT_SCREEN_SECONDS
-        self.ctx.state = State.BOOTING
-        log.info("boot screen for %.1fs", BOOT_SCREEN_SECONDS)
-        try:
-            ui.render(State.BOOTING, self._view_ctx(), self.oled)
-            self._last_render = time.time()
-        except Exception as e:  # pragma: no cover
-            log.warning("initial boot render failed: %s", e)
+        if not self._boot_complete:
+            log.warning("run() started before finish_boot() — forcing IDLE")
+            self._boot_complete = True
+            if self.ctx.state == State.BOOTING:
+                self._transition(State.IDLE)
         if self._display_demo:
             log.info("display demo env — holding SYSTEM OK screen")
             self._transition(State.IDLE)
@@ -833,9 +888,6 @@ class ModeManager:
                     break
 
             now = time.time()
-
-            if self.ctx.state == State.BOOTING and now >= self._boot_until:
-                self._transition(State.IDLE)
 
             if TUNABLES.demo_mode:
                 self._demo_tick(now)

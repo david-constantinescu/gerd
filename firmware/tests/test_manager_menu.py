@@ -143,11 +143,40 @@ def test_med_prompt_ack(mgr: ModeManager) -> None:
     assert mgr.menu.screen == "med_ack"
 
 
-def test_double_a_closes_menu_from_subscreen(mgr: ModeManager) -> None:
+def test_double_a_back_from_subscreen_to_main(mgr: ModeManager) -> None:
     mgr.menu.open = True
     mgr.menu.screen = "settings"
     mgr._on_a_double(time.time())
+    assert mgr.menu.open
+    assert mgr.menu.screen == "main"
+
+
+def test_double_a_closes_from_main_menu(mgr: ModeManager) -> None:
+    _open_main(mgr)
+    mgr._on_a_double(time.time())
     assert not mgr.menu.open
+
+
+def test_double_b_opens_main_from_watch(mgr: ModeManager) -> None:
+    mgr.menu.close()
+    mgr._on_b_double(time.time())
+    assert mgr.menu.open
+    assert mgr.menu.screen == "main"
+
+
+def test_double_b_enters_highlighted_on_main(mgr: ModeManager) -> None:
+    _open_main(mgr)
+    mgr.menu.index = 1  # Log Symptom
+    mgr._on_b_double(time.time())
+    assert mgr.menu.screen == "symptom_severity"
+
+
+def test_double_b_home_from_subscreen(mgr: ModeManager) -> None:
+    mgr.menu.open = True
+    mgr.menu.screen = "settings"
+    mgr._on_b_double(time.time())
+    assert mgr.menu.open
+    assert mgr.menu.screen == "main"
 
 
 def test_double_a_dismisses_med_prompt(mgr: ModeManager) -> None:

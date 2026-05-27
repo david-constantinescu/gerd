@@ -12,12 +12,15 @@ import logging
 import signal
 import sys
 import threading
+import time
 
 from . import __version__
 from .config import reload_tunables
 from .events import Event, EventBus, EventType
+from .hal.display import Display
 from .modes.manager import ModeManager
 from .services import alerts as alerts_service
+from .services import boot as boot_service
 from .services import demo_seed
 from .services import logger as logger_service
 from .services import meds as meds_service
@@ -58,6 +61,56 @@ def _start_hal(bus: EventBus, dry_run: bool) -> list[threading.Thread]:
     return threads
 
 
+def _run_boot_sequence(
+    manager: ModeManager,
+    bus: EventBus,
+    db: logger_service.Logger,
+    *,
+    dry_run: bool,
+    demo_mode: bool,
+) -> None:
+    """Drive the OLED boot screen from real init steps."""
+    manager.begin_boot()
+
+    manager.set_boot_status("Display", "Panel init", progress=0.08)
+    time.sleep(0.05)
+
+    manager.set_boot_status("Database", "Opening store", progress=0.22)
+    if demo_mode:
+        demo_seed.restart_demo_on_boot(db)
+        manager.meds._refresh_schedule()
+    db.boot_session()
+    time.sleep(0.05)
+
+    manager.set_boot_status("Services", "Alerts & sleep", progress=0.38)
+
+    found, i2c_line = boot_service.scan_summary(dry_run=dry_run)
+    manager.set_boot_status("I2C bus", i2c_line, progress=0.52, devices=i2c_line)
+    if not dry_run and found:
+        from .hal.i2c_probe import log_scan_results
+
+        log_scan_results(found)
+
+    manager.set_boot_status("Sensors", "Starting threads", progress=0.65)
+    hal_threads = _start_hal(bus, dry_run=dry_run)
+
+    manager.set_boot_status("Sensors", "First readings", progress=0.78)
+    imu_ok, power_ok = boot_service.wait_for_hal_samples(bus, timeout_s=3.5)
+    status = boot_service.sensor_status_line(
+        imu_ok=imu_ok, power_ok=power_ok, dry_run=dry_run
+    )
+    manager.set_boot_status(
+        "Sensors",
+        status,
+        progress=0.92,
+        devices=status,
+    )
+    time.sleep(0.08)
+
+    manager.finish_boot()
+    return hal_threads
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="upright", description="UpRight firmware")
     parser.add_argument("--dry-run", action="store_true", help="run with HAL stubs (no GPIO/I²C)")
@@ -75,9 +128,6 @@ def main(argv: list[str] | None = None) -> int:
 
     bus = EventBus()
     db = logger_service.Logger()
-    if tunables.demo_mode:
-        demo_seed.restart_demo_on_boot(db)
-    db.boot_session()
 
     alerts = alerts_service.AlertManager(bus)
     sleep = sleep_service.SleepTracker(bus)
@@ -85,9 +135,18 @@ def main(argv: list[str] | None = None) -> int:
 
     _init_gpio_pins(dry_run=args.dry_run)
 
-    manager = ModeManager(bus, db, alerts=alerts, sleep=sleep, meds=meds)
+    oled = Display(dry_run=args.dry_run, autoprobe=not args.dry_run)
+    manager = ModeManager(
+        bus, db, alerts=alerts, sleep=sleep, meds=meds, display=oled
+    )
 
-    hal_threads = _start_hal(bus, dry_run=args.dry_run)
+    hal_threads = _run_boot_sequence(
+        manager,
+        bus,
+        db,
+        dry_run=args.dry_run,
+        demo_mode=bool(tunables.demo_mode),
+    )
 
     stop_evt = threading.Event()
 
