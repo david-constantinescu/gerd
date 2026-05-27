@@ -1,191 +1,2919 @@
 {
-  "Almonds": {"risk": "LOW", "upright_hours": 1.5},
-  "Apple": {"risk": "LOW", "upright_hours": 1.5},
-  "Applesauce": {"risk": "LOW", "upright_hours": 1.5},
-  "Apricot": {"risk": "LOW", "upright_hours": 1.5},
-  "Artichoke": {"risk": "LOW", "upright_hours": 2.0},
-  "Asparagus": {"risk": "LOW", "upright_hours": 1.5},
-  "Avocado": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Bacon": {"risk": "HIGH", "upright_hours": 3.0},
-  "Bagel": {"risk": "LOW", "upright_hours": 2.0},
-  "Baked potato": {"risk": "LOW", "upright_hours": 2.0},
-  "Banana": {"risk": "LOW", "upright_hours": 1.5},
-  "Barbecue": {"risk": "HIGH", "upright_hours": 3.0},
-  "Bean soup": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Beef stew": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Beer": {"risk": "HIGH", "upright_hours": 3.0},
-  "Bell pepper": {"risk": "LOW", "upright_hours": 1.5},
-  "Biscuit": {"risk": "LOW", "upright_hours": 2.0},
-  "Black beans": {"risk": "LOW", "upright_hours": 2.0},
-  "Blueberries": {"risk": "LOW", "upright_hours": 1.5},
-  "Bread": {"risk": "LOW", "upright_hours": 1.5},
-  "Broccoli": {"risk": "LOW", "upright_hours": 1.5},
-  "Brown rice": {"risk": "LOW", "upright_hours": 2.0},
-  "Brownie": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Brussels sprouts": {"risk": "LOW", "upright_hours": 1.5},
-  "Burger": {"risk": "HIGH", "upright_hours": 3.0},
-  "Burrito": {"risk": "HIGH", "upright_hours": 3.0},
-  "Butter": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Cabbage": {"risk": "LOW", "upright_hours": 1.5},
-  "Caesar salad": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Cake": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Candy": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Cantaloupe": {"risk": "LOW", "upright_hours": 1.5},
-  "Caramel": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Carrot": {"risk": "LOW", "upright_hours": 1.5},
-  "Cauliflower": {"risk": "LOW", "upright_hours": 1.5},
-  "Celery": {"risk": "LOW", "upright_hours": 1.5},
-  "Cereal": {"risk": "LOW", "upright_hours": 1.5},
-  "Cheese": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Cheesecake": {"risk": "HIGH", "upright_hours": 3.0},
-  "Cheeseburger": {"risk": "HIGH", "upright_hours": 3.0},
-  "Cherry": {"risk": "LOW", "upright_hours": 1.5},
-  "Chicken breast": {"risk": "LOW", "upright_hours": 2.0},
-  "Chicken curry": {"risk": "HIGH", "upright_hours": 3.0},
-  "Chicken wings": {"risk": "HIGH", "upright_hours": 3.0},
-  "Chickpea": {"risk": "LOW", "upright_hours": 2.0},
-  "Chili": {"risk": "HIGH", "upright_hours": 3.0},
-  "Chocolate": {"risk": "HIGH", "upright_hours": 3.0},
-  "Chocolate cake": {"risk": "HIGH", "upright_hours": 3.0},
-  "Cinnamon roll": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Citrus": {"risk": "HIGH", "upright_hours": 3.0},
-  "Coconut": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Coffee": {"risk": "HIGH", "upright_hours": 3.0},
-  "Cola": {"risk": "HIGH", "upright_hours": 3.0},
-  "Cookie": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Corn": {"risk": "LOW", "upright_hours": 1.5},
-  "Cornbread": {"risk": "LOW", "upright_hours": 2.0},
-  "Couscous": {"risk": "LOW", "upright_hours": 2.0},
-  "Crackers": {"risk": "LOW", "upright_hours": 1.5},
-  "Cranberry": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Cream": {"risk": "HIGH", "upright_hours": 3.0},
-  "Croissant": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Cucumber": {"risk": "LOW", "upright_hours": 1.5},
-  "Cupcake": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Curry": {"risk": "HIGH", "upright_hours": 3.0},
-  "Donut": {"risk": "HIGH", "upright_hours": 3.0},
-  "Dumpling": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Egg": {"risk": "LOW", "upright_hours": 1.5},
-  "Eggplant": {"risk": "LOW", "upright_hours": 1.5},
-  "Enchilada": {"risk": "HIGH", "upright_hours": 3.0},
-  "Falafel": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Fig": {"risk": "LOW", "upright_hours": 1.5},
-  "Fish": {"risk": "LOW", "upright_hours": 2.0},
-  "French fries": {"risk": "HIGH", "upright_hours": 3.0},
-  "Fried chicken": {"risk": "HIGH", "upright_hours": 3.0},
-  "Fried egg": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Fried rice": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Garlic": {"risk": "HIGH", "upright_hours": 3.0},
-  "Ginger": {"risk": "LOW", "upright_hours": 1.5},
-  "Granola": {"risk": "LOW", "upright_hours": 1.5},
-  "Grape": {"risk": "LOW", "upright_hours": 1.5},
-  "Grapefruit": {"risk": "HIGH", "upright_hours": 3.0},
-  "Green beans": {"risk": "LOW", "upright_hours": 1.5},
-  "Green tea": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Grilled chicken": {"risk": "LOW", "upright_hours": 2.0},
-  "Guacamole": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Ham": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Hamburger": {"risk": "HIGH", "upright_hours": 3.0},
-  "Honey": {"risk": "LOW", "upright_hours": 1.5},
-  "Hot dog": {"risk": "HIGH", "upright_hours": 3.0},
-  "Hot sauce": {"risk": "HIGH", "upright_hours": 3.0},
-  "Ice cream": {"risk": "HIGH", "upright_hours": 3.0},
-  "Jam": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Juice": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Kale": {"risk": "LOW", "upright_hours": 1.5},
-  "Kebab": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Ketchup": {"risk": "HIGH", "upright_hours": 3.0},
-  "Kiwi": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Lamb": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Lasagna": {"risk": "HIGH", "upright_hours": 3.0},
-  "Leek": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Lemon": {"risk": "HIGH", "upright_hours": 3.0},
-  "Lentil": {"risk": "LOW", "upright_hours": 2.0},
-  "Lettuce": {"risk": "LOW", "upright_hours": 1.5},
-  "Lime": {"risk": "HIGH", "upright_hours": 3.0},
-  "Macaroni": {"risk": "LOW", "upright_hours": 2.0},
-  "Mango": {"risk": "LOW", "upright_hours": 1.5},
-  "Mashed potato": {"risk": "LOW", "upright_hours": 2.0},
-  "Mayonnaise": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Meatball": {"risk": "HIGH", "upright_hours": 3.0},
-  "Melon": {"risk": "LOW", "upright_hours": 1.5},
-  "Milk": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Muffin": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Mushroom": {"risk": "LOW", "upright_hours": 1.5},
-  "Mustard": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Nachos": {"risk": "HIGH", "upright_hours": 3.0},
-  "Noodle soup": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Noodles": {"risk": "LOW", "upright_hours": 2.0},
-  "Oatmeal": {"risk": "LOW", "upright_hours": 1.5},
-  "Olive": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Olive oil": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Omelette": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Onion": {"risk": "HIGH", "upright_hours": 3.0},
-  "Orange": {"risk": "HIGH", "upright_hours": 3.0},
-  "Oyster": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Pancake": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Papaya": {"risk": "LOW", "upright_hours": 1.5},
-  "Pasta": {"risk": "LOW", "upright_hours": 2.0},
-  "Pasta bolognese": {"risk": "HIGH", "upright_hours": 3.0},
-  "Peach": {"risk": "LOW", "upright_hours": 1.5},
-  "Peanut": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Peanut butter": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Pear": {"risk": "LOW", "upright_hours": 1.5},
-  "Peas": {"risk": "LOW", "upright_hours": 1.5},
-  "Pepperoni": {"risk": "HIGH", "upright_hours": 3.0},
-  "Pickles": {"risk": "HIGH", "upright_hours": 3.0},
-  "Pie": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Pineapple": {"risk": "HIGH", "upright_hours": 3.0},
-  "Pizza": {"risk": "HIGH", "upright_hours": 3.0},
-  "Plum": {"risk": "LOW", "upright_hours": 1.5},
-  "Popcorn": {"risk": "LOW", "upright_hours": 1.5},
-  "Pork": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Pork chop": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Potato": {"risk": "LOW", "upright_hours": 2.0},
-  "Potato chips": {"risk": "HIGH", "upright_hours": 3.0},
-  "Pretzel": {"risk": "LOW", "upright_hours": 1.5},
-  "Pudding": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Pumpkin": {"risk": "LOW", "upright_hours": 1.5},
-  "Quinoa": {"risk": "LOW", "upright_hours": 2.0},
-  "Radish": {"risk": "LOW", "upright_hours": 1.5},
-  "Ramen": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Raspberry": {"risk": "LOW", "upright_hours": 1.5},
-  "Ravioli": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Rice": {"risk": "LOW", "upright_hours": 2.0},
-  "Risotto": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Salad": {"risk": "LOW", "upright_hours": 1.5},
-  "Salami": {"risk": "HIGH", "upright_hours": 3.0},
-  "Salmon": {"risk": "LOW", "upright_hours": 2.0},
-  "Salsa": {"risk": "HIGH", "upright_hours": 3.0},
-  "Sandwich": {"risk": "LOW", "upright_hours": 2.0},
-  "Sausage": {"risk": "HIGH", "upright_hours": 3.0},
-  "Scrambled eggs": {"risk": "LOW", "upright_hours": 1.5},
-  "Seafood": {"risk": "LOW", "upright_hours": 2.0},
-  "Shrimp": {"risk": "LOW", "upright_hours": 2.0},
-  "Soda": {"risk": "HIGH", "upright_hours": 3.0},
-  "Soup": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Spaghetti": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Spinach": {"risk": "LOW", "upright_hours": 1.5},
-  "Steak": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Strawberry": {"risk": "LOW", "upright_hours": 1.5},
-  "Sushi": {"risk": "LOW", "upright_hours": 2.0},
-  "Sweet potato": {"risk": "LOW", "upright_hours": 2.0},
-  "Taco": {"risk": "HIGH", "upright_hours": 3.0},
-  "Tea": {"risk": "MEDIUM", "upright_hours": 2.0},
-  "Toast": {"risk": "LOW", "upright_hours": 1.5},
-  "Tofu": {"risk": "LOW", "upright_hours": 2.0},
-  "Tomato": {"risk": "HIGH", "upright_hours": 3.0},
-  "Tomato sauce": {"risk": "HIGH", "upright_hours": 3.0},
-  "Tortilla": {"risk": "LOW", "upright_hours": 2.0},
-  "Tuna": {"risk": "LOW", "upright_hours": 2.0},
-  "Turkey": {"risk": "LOW", "upright_hours": 2.0},
-  "Vanilla ice cream": {"risk": "HIGH", "upright_hours": 3.0},
-  "Vegetable soup": {"risk": "LOW", "upright_hours": 2.0},
-  "Waffle": {"risk": "MEDIUM", "upright_hours": 2.5},
-  "Walnut": {"risk": "LOW", "upright_hours": 1.5},
-  "Watermelon": {"risk": "LOW", "upright_hours": 1.5},
-  "Whipped cream": {"risk": "HIGH", "upright_hours": 3.0},
-  "Wine": {"risk": "HIGH", "upright_hours": 3.0},
-  "Yogurt": {"risk": "LOW", "upright_hours": 1.5},
-  "Zucchini": {"risk": "LOW", "upright_hours": 1.5}
+  "Acid reflux trigger plate": {
+    "gerd_score": 98,
+    "risk": "HIGH",
+    "upright_hours": 3.5
+  },
+  "Almond milk": {
+    "aliases": [
+      "almond_milk"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Almonds": {
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Apple": {
+    "aliases": [
+      "apple"
+    ],
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Apple Pie": {
+    "aliases": [
+      "apple_pie"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Applesauce": {
+    "aliases": [
+      "applesauce"
+    ],
+    "gerd_score": 14,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Apricot": {
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Artichoke": {
+    "gerd_score": 16,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Asparagus": {
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Avocado": {
+    "aliases": [
+      "avocado"
+    ],
+    "gerd_score": 35,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "BLT sandwich": {
+    "aliases": [
+      "blt"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Baby Back Ribs": {
+    "aliases": [
+      "baby_back_ribs"
+    ],
+    "gerd_score": 86,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Bacon": {
+    "aliases": [
+      "bacon"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Bacon and eggs": {
+    "gerd_score": 82,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Bagel": {
+    "aliases": [
+      "bagel"
+    ],
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Baked beans": {
+    "aliases": [
+      "baked_beans"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Baked chicken": {
+    "aliases": [
+      "baked_chicken"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.5
+  },
+  "Baked potato": {
+    "aliases": [
+      "baked_potato"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Baklava": {
+    "aliases": [
+      "baklava"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Balsamic dressing": {
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Banana": {
+    "aliases": [
+      "banana"
+    ],
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Barbecue": {
+    "aliases": [
+      "bbq",
+      "barbecue_sauce"
+    ],
+    "gerd_score": 86,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Bean soup": {
+    "aliases": [
+      "bean_soup"
+    ],
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Beef Carpaccio": {
+    "aliases": [
+      "beef_carpaccio"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Beef Tartare": {
+    "aliases": [
+      "beef_tartare"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Beef stew": {
+    "aliases": [
+      "beef_stew"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Beer": {
+    "aliases": [
+      "beer"
+    ],
+    "gerd_score": 90,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Beet Salad": {
+    "aliases": [
+      "beet_salad"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Beignets": {
+    "aliases": [
+      "beignets"
+    ],
+    "gerd_score": 58,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Bell pepper": {
+    "aliases": [
+      "bell_pepper"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Bibimbap": {
+    "aliases": [
+      "bibimbap"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Biryani": {
+    "aliases": [
+      "biryani"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Biscuit": {
+    "gerd_score": 30,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Black beans": {
+    "aliases": [
+      "black_beans"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Blue cheese dressing": {
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Blueberries": {
+    "aliases": [
+      "blueberries"
+    ],
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Bread": {
+    "aliases": [
+      "bread",
+      "white_bread",
+      "whole_wheat_bread"
+    ],
+    "gerd_score": 25,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Bread Pudding": {
+    "aliases": [
+      "bread_pudding"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Breakfast Burrito": {
+    "aliases": [
+      "breakfast_burrito"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Breakfast cereal": {
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Broccoli": {
+    "aliases": [
+      "broccoli"
+    ],
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Brown rice": {
+    "aliases": [
+      "brown_rice"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Brownie": {
+    "aliases": [
+      "brownie",
+      "brownies"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Bruschetta": {
+    "aliases": [
+      "bruschetta"
+    ],
+    "gerd_score": 72,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Brussels sprouts": {
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Buffalo wings": {
+    "aliases": [
+      "buffalo_wings"
+    ],
+    "gerd_score": 92,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Burger": {
+    "aliases": [
+      "burger",
+      "cheeseburger"
+    ],
+    "gerd_score": 92,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Burrito": {
+    "aliases": [
+      "burrito"
+    ],
+    "gerd_score": 82,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Butter": {
+    "aliases": [
+      "butter"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Butter chicken": {
+    "aliases": [
+      "butter_chicken"
+    ],
+    "gerd_score": 75,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Cabbage": {
+    "aliases": [
+      "cabbage"
+    ],
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Caesar Salad": {
+    "aliases": [
+      "caesar_salad"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Caesar wrap": {
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Cake": {
+    "aliases": [
+      "cake"
+    ],
+    "gerd_score": 58,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "California roll": {
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Candy": {
+    "aliases": [
+      "candy"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Cannoli": {
+    "aliases": [
+      "cannoli"
+    ],
+    "gerd_score": 54,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Cantaloupe": {
+    "aliases": [
+      "cantaloupe",
+      "melon"
+    ],
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Caprese Salad": {
+    "aliases": [
+      "caprese_salad"
+    ],
+    "gerd_score": 40,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Caramel": {
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Carrot": {
+    "aliases": [
+      "carrot",
+      "carrots"
+    ],
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Carrot Cake": {
+    "aliases": [
+      "carrot_cake"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Cashews": {
+    "aliases": [
+      "cashews"
+    ],
+    "gerd_score": 35,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Cauliflower": {
+    "aliases": [
+      "cauliflower"
+    ],
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Celery": {
+    "aliases": [
+      "celery"
+    ],
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Cereal": {
+    "aliases": [
+      "cereal"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Ceviche": {
+    "aliases": [
+      "ceviche"
+    ],
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Chamomile tea": {
+    "aliases": [
+      "chamomile_tea"
+    ],
+    "gerd_score": 5,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Cheese": {
+    "aliases": [
+      "cheese"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Cheese Plate": {
+    "aliases": [
+      "cheese_plate"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Cheese omelette": {
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Cheese pizza": {
+    "gerd_score": 90,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Cheesecake": {
+    "aliases": [
+      "cheesecake"
+    ],
+    "gerd_score": 80,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Cherry": {
+    "aliases": [
+      "cherries"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Chicken Curry": {
+    "aliases": [
+      "chicken_curry"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Chicken Quesadilla": {
+    "aliases": [
+      "chicken_quesadilla"
+    ],
+    "gerd_score": 76,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Chicken Wings": {
+    "aliases": [
+      "chicken_wings"
+    ],
+    "gerd_score": 90,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Chicken breast": {
+    "aliases": [
+      "chicken_breast",
+      "grilled_chicken"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Chicken noodle soup": {
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Chicken nuggets": {
+    "aliases": [
+      "chicken_nuggets"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Chicken pot pie": {
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Chicken salad": {
+    "aliases": [
+      "chicken_salad"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Chicken sandwich": {
+    "aliases": [
+      "chicken_sandwich"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Chicken soup": {
+    "aliases": [
+      "chicken_soup"
+    ],
+    "gerd_score": 35,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Chicken tenders": {
+    "aliases": [
+      "chicken_tenders"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Chickpea": {
+    "aliases": [
+      "chickpeas",
+      "chickpea"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Chili": {
+    "aliases": [
+      "chili",
+      "chilli"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Chocolate": {
+    "aliases": [
+      "chocolate"
+    ],
+    "gerd_score": 90,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Chocolate Cake": {
+    "aliases": [
+      "chocolate_cake"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Chocolate Mousse": {
+    "aliases": [
+      "chocolate_mousse"
+    ],
+    "gerd_score": 82,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Churros": {
+    "aliases": [
+      "churros"
+    ],
+    "gerd_score": 60,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Cinnamon roll": {
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Citrus": {
+    "aliases": [
+      "citrus",
+      "orange",
+      "lemon",
+      "lime",
+      "grapefruit"
+    ],
+    "gerd_score": 92,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Clam Chowder": {
+    "aliases": [
+      "clam_chowder"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Club Sandwich": {
+    "aliases": [
+      "club_sandwich"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Coconut": {
+    "aliases": [
+      "coconut"
+    ],
+    "gerd_score": 35,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Coffee": {
+    "aliases": [
+      "coffee",
+      "espresso",
+      "latte",
+      "cappuccino"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Cola": {
+    "aliases": [
+      "cola",
+      "soda",
+      "soft_drink"
+    ],
+    "gerd_score": 95,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Coleslaw": {
+    "aliases": [
+      "coleslaw"
+    ],
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Cookie": {
+    "aliases": [
+      "cookie",
+      "cookies"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Corn": {
+    "aliases": [
+      "corn"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Corn dog": {
+    "aliases": [
+      "corn_dog"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Cornbread": {
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Cottage cheese": {
+    "aliases": [
+      "cottage_cheese"
+    ],
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Couscous": {
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Crab Cakes": {
+    "aliases": [
+      "crab_cakes"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Crackers": {
+    "aliases": [
+      "crackers"
+    ],
+    "gerd_score": 25,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Cranberry": {
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Cream": {
+    "aliases": [
+      "cream",
+      "heavy_cream"
+    ],
+    "gerd_score": 75,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Cream cheese": {
+    "aliases": [
+      "cream_cheese"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Cream of mushroom soup": {
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Creme Brulee": {
+    "aliases": [
+      "creme_brulee"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Croissant": {
+    "aliases": [
+      "croissant"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Croque Madame": {
+    "aliases": [
+      "croque_madame"
+    ],
+    "gerd_score": 74,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Cucumber": {
+    "aliases": [
+      "cucumber"
+    ],
+    "gerd_score": 6,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Cup Cakes": {
+    "aliases": [
+      "cup_cakes"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Cup noodles": {
+    "aliases": [
+      "cup_noodles"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Cupcake": {
+    "aliases": [
+      "cupcake"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Curry": {
+    "aliases": [
+      "curry"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Dark chocolate": {
+    "aliases": [
+      "dark_chocolate"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Deviled Eggs": {
+    "aliases": [
+      "deviled_eggs"
+    ],
+    "gerd_score": 46,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Donuts": {
+    "aliases": [
+      "donuts"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Dumplings": {
+    "aliases": [
+      "dumplings"
+    ],
+    "gerd_score": 44,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Edamame": {
+    "aliases": [
+      "edamame"
+    ],
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Egg": {
+    "aliases": [
+      "egg",
+      "eggs",
+      "boiled_egg"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Egg salad": {
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Eggplant": {
+    "aliases": [
+      "eggplant"
+    ],
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Eggs Benedict": {
+    "aliases": [
+      "eggs_benedict"
+    ],
+    "gerd_score": 70,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Enchilada": {
+    "aliases": [
+      "enchilada"
+    ],
+    "gerd_score": 82,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Energy drink": {
+    "aliases": [
+      "energy_drink"
+    ],
+    "gerd_score": 92,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Escargots": {
+    "aliases": [
+      "escargots"
+    ],
+    "gerd_score": 40,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Falafel": {
+    "aliases": [
+      "falafel"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Falafel wrap": {
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Fig": {
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Filet Mignon": {
+    "aliases": [
+      "filet_mignon"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Fish": {
+    "aliases": [
+      "fish",
+      "white_fish"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Fish And Chips": {
+    "aliases": [
+      "fish_and_chips"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Fish sandwich": {
+    "aliases": [
+      "fish_sandwich"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Fish sticks": {
+    "aliases": [
+      "fish_sticks"
+    ],
+    "gerd_score": 80,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Fish tacos": {
+    "aliases": [
+      "fish_tacos"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Foie Gras": {
+    "aliases": [
+      "foie_gras"
+    ],
+    "gerd_score": 75,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "French Fries": {
+    "aliases": [
+      "french_fries"
+    ],
+    "gerd_score": 92,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "French Onion Soup": {
+    "aliases": [
+      "french_onion_soup"
+    ],
+    "gerd_score": 68,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "French Toast": {
+    "aliases": [
+      "french_toast"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "French toast sticks": {
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Fried Calamari": {
+    "aliases": [
+      "fried_calamari"
+    ],
+    "gerd_score": 86,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Fried Rice": {
+    "aliases": [
+      "fried_rice"
+    ],
+    "gerd_score": 58,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Fried chicken": {
+    "aliases": [
+      "fried_chicken"
+    ],
+    "gerd_score": 92,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Fried egg": {
+    "aliases": [
+      "fried_egg"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Fried tofu": {
+    "gerd_score": 40,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Frozen Yogurt": {
+    "aliases": [
+      "frozen_yogurt"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Garlic": {
+    "aliases": [
+      "garlic"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Garlic Bread": {
+    "aliases": [
+      "garlic_bread"
+    ],
+    "gerd_score": 76,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Ginger": {
+    "aliases": [
+      "ginger",
+      "ginger_tea"
+    ],
+    "gerd_score": 5,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Ginger tea": {
+    "aliases": [
+      "ginger_tea"
+    ],
+    "gerd_score": 4,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Gluten free bread": {
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Gnocchi": {
+    "aliases": [
+      "gnocchi"
+    ],
+    "gerd_score": 46,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Granola": {
+    "aliases": [
+      "granola"
+    ],
+    "gerd_score": 25,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Granola bar": {
+    "aliases": [
+      "granola_bar"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Grape": {
+    "aliases": [
+      "grapes",
+      "grape"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Grapefruit": {
+    "aliases": [
+      "grapefruit"
+    ],
+    "gerd_score": 90,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Greek Salad": {
+    "aliases": [
+      "greek_salad"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Green beans": {
+    "aliases": [
+      "green_beans"
+    ],
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Green curry": {
+    "aliases": [
+      "green_curry"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Green tea": {
+    "aliases": [
+      "green_tea"
+    ],
+    "gerd_score": 35,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Grilled Cheese Sandwich": {
+    "aliases": [
+      "grilled_cheese_sandwich"
+    ],
+    "gerd_score": 62,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Grilled Salmon": {
+    "aliases": [
+      "grilled_salmon"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Grilled cheese": {
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Grilled fish": {
+    "aliases": [
+      "grilled_fish"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Grilled vegetables": {
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Guacamole": {
+    "aliases": [
+      "guacamole"
+    ],
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Gyoza": {
+    "aliases": [
+      "gyoza"
+    ],
+    "gerd_score": 44,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Gyro": {
+    "aliases": [
+      "gyro"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Ham": {
+    "aliases": [
+      "ham"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Hamburger": {
+    "aliases": [
+      "hamburger"
+    ],
+    "gerd_score": 90,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Hash browns": {
+    "aliases": [
+      "hash_browns"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Herbal tea": {
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Home fries": {
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Honey": {
+    "aliases": [
+      "honey"
+    ],
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Hot And Sour Soup": {
+    "aliases": [
+      "hot_and_sour_soup"
+    ],
+    "gerd_score": 72,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Hot Dog": {
+    "aliases": [
+      "hot_dog"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Hot sauce": {
+    "aliases": [
+      "hot_sauce",
+      "sriracha",
+      "chili_sauce"
+    ],
+    "gerd_score": 95,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Huevos Rancheros": {
+    "aliases": [
+      "huevos_rancheros"
+    ],
+    "gerd_score": 74,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Hummus": {
+    "aliases": [
+      "hummus"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Hummus and pita": {
+    "gerd_score": 25,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Hummus wrap": {
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Ice Cream": {
+    "aliases": [
+      "ice_cream"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Iced coffee": {
+    "aliases": [
+      "iced_coffee"
+    ],
+    "gerd_score": 82,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Instant noodles": {
+    "aliases": [
+      "instant_noodles"
+    ],
+    "gerd_score": 75,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Italian dressing": {
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Jam": {
+    "aliases": [
+      "jam",
+      "jelly"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Juice": {
+    "aliases": [
+      "juice",
+      "orange_juice",
+      "apple_juice"
+    ],
+    "gerd_score": 75,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Kale": {
+    "aliases": [
+      "kale"
+    ],
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Kebab": {
+    "aliases": [
+      "kebab"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Kebab plate": {
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Ketchup": {
+    "aliases": [
+      "ketchup"
+    ],
+    "gerd_score": 80,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Kiwi": {
+    "aliases": [
+      "kiwi"
+    ],
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Lamb": {
+    "aliases": [
+      "lamb"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Lasagna": {
+    "aliases": [
+      "lasagna"
+    ],
+    "gerd_score": 92,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Lemon": {
+    "aliases": [
+      "lemon"
+    ],
+    "gerd_score": 92,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Lentil": {
+    "aliases": [
+      "lentils",
+      "lentil_soup"
+    ],
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Lettuce": {
+    "aliases": [
+      "lettuce"
+    ],
+    "gerd_score": 5,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Lime": {
+    "aliases": [
+      "lime"
+    ],
+    "gerd_score": 90,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Lobster Bisque": {
+    "aliases": [
+      "lobster_bisque"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Lobster Roll Sandwich": {
+    "aliases": [
+      "lobster_roll_sandwich"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Mac and cheese": {
+    "aliases": [
+      "mac_and_cheese"
+    ],
+    "gerd_score": 80,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Macaroni": {
+    "aliases": [
+      "macaroni"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Macaroni And Cheese": {
+    "aliases": [
+      "macaroni_and_cheese"
+    ],
+    "gerd_score": 80,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Macarons": {
+    "aliases": [
+      "macarons"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Mango": {
+    "aliases": [
+      "mango"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Margherita pizza": {
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Mashed potato": {
+    "aliases": [
+      "mashed_potato",
+      "mashed_potatoes"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Mashed potatoes and gravy": {
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Mayonnaise": {
+    "aliases": [
+      "mayonnaise",
+      "mayo"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Meatball": {
+    "aliases": [
+      "meatballs",
+      "meatball"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Meatloaf": {
+    "aliases": [
+      "meatloaf"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Melon": {
+    "aliases": [
+      "melon",
+      "honeydew"
+    ],
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Milk": {
+    "aliases": [
+      "milk",
+      "whole_milk"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Milk chocolate": {
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Milkshake": {
+    "aliases": [
+      "milkshake"
+    ],
+    "gerd_score": 80,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Mint": {
+    "aliases": [
+      "mint"
+    ],
+    "gerd_score": 70,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Miso Soup": {
+    "aliases": [
+      "miso_soup"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Mozzarella sticks": {
+    "aliases": [
+      "mozzarella_sticks"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Muffin": {
+    "aliases": [
+      "muffin"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Mushroom": {
+    "aliases": [
+      "mushroom",
+      "mushrooms"
+    ],
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Mussels": {
+    "aliases": [
+      "mussels"
+    ],
+    "gerd_score": 25,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Mustard": {
+    "aliases": [
+      "mustard"
+    ],
+    "gerd_score": 35,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Naan": {
+    "aliases": [
+      "naan"
+    ],
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Nachos": {
+    "aliases": [
+      "nachos"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Nachos with cheese": {
+    "gerd_score": 90,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Noodle soup": {
+    "aliases": [
+      "noodle_soup"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Noodles": {
+    "aliases": [
+      "noodles"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Oatmeal": {
+    "aliases": [
+      "oatmeal",
+      "porridge",
+      "oats"
+    ],
+    "gerd_score": 6,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Olive": {
+    "aliases": [
+      "olives",
+      "olive"
+    ],
+    "gerd_score": 30,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Olive oil": {
+    "aliases": [
+      "olive_oil"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Omelette": {
+    "aliases": [
+      "omelette"
+    ],
+    "gerd_score": 40,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Onion": {
+    "aliases": [
+      "onion",
+      "onions"
+    ],
+    "gerd_score": 75,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Onion Rings": {
+    "aliases": [
+      "onion_rings"
+    ],
+    "gerd_score": 82,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Onion soup": {
+    "gerd_score": 70,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Orange": {
+    "aliases": [
+      "orange"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Oysters": {
+    "aliases": [
+      "oysters"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Pad Thai": {
+    "aliases": [
+      "pad_thai"
+    ],
+    "gerd_score": 75,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Pad see ew": {
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Paella": {
+    "aliases": [
+      "paella"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Pancakes": {
+    "aliases": [
+      "pancakes"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Pancakes with syrup": {
+    "gerd_score": 58,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Panna Cotta": {
+    "aliases": [
+      "panna_cotta"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Papaya": {
+    "aliases": [
+      "papaya"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Pasta": {
+    "aliases": [
+      "pasta",
+      "plain_pasta"
+    ],
+    "gerd_score": 25,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Peach": {
+    "aliases": [
+      "peach"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Peanut": {
+    "aliases": [
+      "peanuts",
+      "peanut"
+    ],
+    "gerd_score": 40,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Peanut butter": {
+    "aliases": [
+      "peanut_butter"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Peanut butter cup": {
+    "gerd_score": 80,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Peanut butter sandwich": {
+    "aliases": [
+      "peanut_butter_sandwich"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Pear": {
+    "aliases": [
+      "pear"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Peas": {
+    "aliases": [
+      "peas"
+    ],
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Peking Duck": {
+    "aliases": [
+      "peking_duck"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Peppermint tea": {
+    "aliases": [
+      "peppermint_tea"
+    ],
+    "gerd_score": 35,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Pepperoni": {
+    "aliases": [
+      "pepperoni"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Pepperoni pizza": {
+    "gerd_score": 95,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Philly cheesesteak": {
+    "aliases": [
+      "cheesesteak"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Pho": {
+    "aliases": [
+      "pho"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Pickles": {
+    "aliases": [
+      "pickles",
+      "pickle"
+    ],
+    "gerd_score": 72,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Pie": {
+    "aliases": [
+      "pie"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Pineapple": {
+    "aliases": [
+      "pineapple"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Pita bread": {
+    "aliases": [
+      "pita",
+      "pita_bread"
+    ],
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Pizza": {
+    "aliases": [
+      "pizza"
+    ],
+    "gerd_score": 95,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Plum": {
+    "aliases": [
+      "plum"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Poke bowl": {
+    "aliases": [
+      "poke_bowl"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Popcorn": {
+    "aliases": [
+      "popcorn"
+    ],
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Pork": {
+    "aliases": [
+      "pork"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Pork Chop": {
+    "aliases": [
+      "pork_chop"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Porridge": {
+    "gerd_score": 6,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Pot pie": {
+    "aliases": [
+      "pot_pie"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Potato": {
+    "aliases": [
+      "potato",
+      "potatoes"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Potato chips": {
+    "aliases": [
+      "potato_chips",
+      "chips"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Poutine": {
+    "aliases": [
+      "poutine"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Pretzel": {
+    "aliases": [
+      "pretzel",
+      "pretzels"
+    ],
+    "gerd_score": 30,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Prime Rib": {
+    "aliases": [
+      "prime_rib"
+    ],
+    "gerd_score": 58,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Protein bar": {
+    "gerd_score": 40,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Protein shake": {
+    "aliases": [
+      "protein_shake"
+    ],
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Pudding": {
+    "aliases": [
+      "pudding"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Pulled Pork Sandwich": {
+    "aliases": [
+      "pulled_pork_sandwich"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Pumpkin": {
+    "aliases": [
+      "pumpkin"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Quesadilla": {
+    "aliases": [
+      "quesadilla"
+    ],
+    "gerd_score": 72,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Quinoa": {
+    "aliases": [
+      "quinoa"
+    ],
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Radish": {
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Ramen": {
+    "aliases": [
+      "ramen"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Ranch dressing": {
+    "aliases": [
+      "ranch"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Raspberry": {
+    "aliases": [
+      "raspberries"
+    ],
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Ravioli": {
+    "aliases": [
+      "ravioli"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Red Velvet Cake": {
+    "aliases": [
+      "red_velvet_cake"
+    ],
+    "gerd_score": 58,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Red curry": {
+    "aliases": [
+      "red_curry"
+    ],
+    "gerd_score": 80,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Refried beans": {
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Reuben sandwich": {
+    "aliases": [
+      "reuben"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Rice": {
+    "aliases": [
+      "rice",
+      "white_rice",
+      "steamed_rice"
+    ],
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Rice cake": {
+    "aliases": [
+      "rice_cake"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Rice noodles": {
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Risotto": {
+    "aliases": [
+      "risotto"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Roast chicken": {
+    "aliases": [
+      "roast_chicken"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 2.5
+  },
+  "Roasted vegetables": {
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Rye bread": {
+    "aliases": [
+      "rye_bread"
+    ],
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Salad": {
+    "aliases": [
+      "salad",
+      "green_salad"
+    ],
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Salami": {
+    "aliases": [
+      "salami"
+    ],
+    "gerd_score": 82,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Salmon": {
+    "aliases": [
+      "salmon"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Salsa": {
+    "aliases": [
+      "salsa"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Samosa": {
+    "aliases": [
+      "samosa"
+    ],
+    "gerd_score": 72,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Sandwich": {
+    "aliases": [
+      "sandwich"
+    ],
+    "gerd_score": 40,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Sashimi": {
+    "aliases": [
+      "sashimi"
+    ],
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Sausage": {
+    "aliases": [
+      "sausage",
+      "sausages"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Sausage and eggs": {
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Scallops": {
+    "aliases": [
+      "scallops"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Scrambled eggs": {
+    "aliases": [
+      "scrambled_eggs"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Seafood": {
+    "aliases": [
+      "seafood"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Seaweed Salad": {
+    "aliases": [
+      "seaweed_salad"
+    ],
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Shawarma": {
+    "aliases": [
+      "shawarma"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Shepherd's pie": {
+    "aliases": [
+      "shepherds_pie"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Shrimp": {
+    "aliases": [
+      "shrimp",
+      "prawns"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Shrimp And Grits": {
+    "aliases": [
+      "shrimp_and_grits"
+    ],
+    "gerd_score": 52,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Sloppy joe": {
+    "aliases": [
+      "sloppy_joe"
+    ],
+    "gerd_score": 75,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Smoothie": {
+    "aliases": [
+      "smoothie"
+    ],
+    "gerd_score": 40,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Soba": {
+    "aliases": [
+      "soba"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Soup": {
+    "aliases": [
+      "soup"
+    ],
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Sour cream": {
+    "aliases": [
+      "sour_cream"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Sourdough bread": {
+    "aliases": [
+      "sourdough"
+    ],
+    "gerd_score": 30,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Spaghetti": {
+    "aliases": [
+      "spaghetti"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Spaghetti Bolognese": {
+    "aliases": [
+      "spaghetti_bolognese"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Spaghetti Carbonara": {
+    "aliases": [
+      "spaghetti_carbonara"
+    ],
+    "gerd_score": 82,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Spaghetti with meatballs": {
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Sparkling water": {
+    "aliases": [
+      "sparkling_water"
+    ],
+    "gerd_score": 5,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Spinach": {
+    "aliases": [
+      "spinach"
+    ],
+    "gerd_score": 6,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Split pea soup": {
+    "gerd_score": 25,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Spring Rolls": {
+    "aliases": [
+      "spring_rolls"
+    ],
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Steak": {
+    "aliases": [
+      "steak"
+    ],
+    "gerd_score": 58,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Steamed vegetables": {
+    "aliases": [
+      "steamed_vegetables"
+    ],
+    "gerd_score": 5,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Still water": {
+    "aliases": [
+      "water"
+    ],
+    "gerd_score": 0,
+    "risk": "LOW",
+    "upright_hours": 1.0
+  },
+  "Stir fry chicken": {
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Stir fry vegetables": {
+    "aliases": [
+      "stir_fry_vegetables"
+    ],
+    "gerd_score": 12,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Strawberry": {
+    "aliases": [
+      "strawberry",
+      "strawberries"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Strawberry Shortcake": {
+    "aliases": [
+      "strawberry_shortcake"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Stuffed cabbage": {
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Stuffed peppers": {
+    "gerd_score": 45,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Sunflower seeds": {
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Sushi": {
+    "aliases": [
+      "sushi"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Sushi roll": {
+    "aliases": [
+      "sushi_roll"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Sweet potato": {
+    "aliases": [
+      "sweet_potato"
+    ],
+    "gerd_score": 15,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Tacos": {
+    "aliases": [
+      "tacos"
+    ],
+    "gerd_score": 80,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Takoyaki": {
+    "aliases": [
+      "takoyaki"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Tea": {
+    "aliases": [
+      "tea",
+      "black_tea",
+      "herbal_tea"
+    ],
+    "gerd_score": 32,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Teriyaki chicken": {
+    "aliases": [
+      "teriyaki_chicken"
+    ],
+    "gerd_score": 48,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Tikka masala": {
+    "aliases": [
+      "tikka_masala"
+    ],
+    "gerd_score": 78,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Tiramisu": {
+    "aliases": [
+      "tiramisu"
+    ],
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Toast": {
+    "aliases": [
+      "toast"
+    ],
+    "gerd_score": 28,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Tofu": {
+    "aliases": [
+      "tofu"
+    ],
+    "gerd_score": 10,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Tomato": {
+    "aliases": [
+      "tomato",
+      "tomatoes"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Tomato sauce": {
+    "aliases": [
+      "tomato_sauce",
+      "marinara"
+    ],
+    "gerd_score": 92,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Tomato soup": {
+    "aliases": [
+      "tomato_soup"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Tortilla": {
+    "aliases": [
+      "tortilla"
+    ],
+    "gerd_score": 25,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Trail mix": {
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Tuna": {
+    "aliases": [
+      "tuna",
+      "tuna_salad"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Tuna Tartare": {
+    "aliases": [
+      "tuna_tartare"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Tuna melt": {
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Tuna salad": {
+    "gerd_score": 40,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Turkey": {
+    "aliases": [
+      "turkey",
+      "turkey_breast"
+    ],
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Turkey breast": {
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Turkey sandwich": {
+    "aliases": [
+      "turkey_sandwich"
+    ],
+    "gerd_score": 38,
+    "risk": "MEDIUM",
+    "upright_hours": 2.0
+  },
+  "Udon": {
+    "aliases": [
+      "udon"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.25
+  },
+  "Vanilla ice cream": {
+    "aliases": [
+      "vanilla_ice_cream"
+    ],
+    "gerd_score": 85,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Vegetable soup": {
+    "aliases": [
+      "vegetable_soup"
+    ],
+    "gerd_score": 18,
+    "risk": "LOW",
+    "upright_hours": 2.0
+  },
+  "Veggie burger": {
+    "aliases": [
+      "veggie_burger"
+    ],
+    "gerd_score": 42,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Veggie omelette": {
+    "gerd_score": 20,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Veggie pizza": {
+    "gerd_score": 82,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Vinaigrette": {
+    "gerd_score": 25,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Waffles": {
+    "aliases": [
+      "waffles"
+    ],
+    "gerd_score": 50,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Waffles with syrup": {
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Walnut": {
+    "aliases": [
+      "walnuts",
+      "walnut"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Watermelon": {
+    "aliases": [
+      "watermelon"
+    ],
+    "gerd_score": 6,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Whipped cream": {
+    "aliases": [
+      "whipped_cream"
+    ],
+    "gerd_score": 72,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "White chocolate": {
+    "gerd_score": 55,
+    "risk": "MEDIUM",
+    "upright_hours": 2.5
+  },
+  "Wine": {
+    "aliases": [
+      "wine",
+      "red_wine",
+      "white_wine"
+    ],
+    "gerd_score": 88,
+    "risk": "HIGH",
+    "upright_hours": 3.0
+  },
+  "Yogurt": {
+    "aliases": [
+      "yogurt",
+      "greek_yogurt"
+    ],
+    "gerd_score": 22,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  },
+  "Zucchini": {
+    "aliases": [
+      "zucchini"
+    ],
+    "gerd_score": 8,
+    "risk": "LOW",
+    "upright_hours": 1.5
+  }
 }

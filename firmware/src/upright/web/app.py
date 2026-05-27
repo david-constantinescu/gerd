@@ -144,7 +144,9 @@ def api_foods():
             data["name"],
             data["risk"],
             float(data.get("upright_hours", 2.5)),
+            gerd_score=data.get("gerd_score"),
         )
+        foods_service.reload()
         return jsonify({"ok": True})
     return jsonify(
         {k: asdict(v) for k, v in foods_service.all_foods().items()}

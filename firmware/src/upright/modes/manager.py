@@ -371,6 +371,9 @@ class ModeManager:
             self.menu.screen = "meal_saved"
             self.menu.flash_until = now + 2.5
         elif action == "food_confirm":
+            hours = float(self.ctx.food_result.get("upright_hours", 0) or 0)
+            if hours > 0 and self.ctx.meal_started_at:
+                self.ctx.meal_window_s = hours * 3600.0
             self.menu.close()
             if self.ctx.state == State.FOOD_PHOTO:
                 self._transition(State.POST_MEAL if self.ctx.meal_started_at else State.IDLE)
@@ -446,24 +449,40 @@ class ModeManager:
             self.ctx.food_result = {
                 "name": "unknown",
                 "risk": "?",
-                "advice": "enter manually",
+                "gerd_score": 0,
+                "upright_hours": TUNABLES.post_meal_default_hours,
+                "advice": "Not recognized — use phone log",
             }
         else:
-            name, risk, conf = result
-            advice = {
-                "LOW": "Good choice",
-                "MEDIUM": "Be careful",
-                "HIGH": "Stay upright 3h",
-            }.get(risk, "")
-            self.ctx.food_result = {"name": name, "risk": risk, "advice": advice}
+            self.ctx.food_result = {
+                "name": result.name,
+                "risk": result.risk,
+                "gerd_score": result.gerd_score,
+                "upright_hours": result.upright_hours,
+                "advice": result.advice,
+                "confidence": result.confidence,
+            }
+            self.ctx.meal_window_s = result.upright_hours * 3600.0
             self.db.event(
                 "food_photo",
-                {"name": name, "risk": risk, "confidence": conf},
+                {
+                    "name": result.name,
+                    "risk": result.risk,
+                    "gerd_score": result.gerd_score,
+                    "upright_hours": result.upright_hours,
+                    "confidence": result.confidence,
+                    "label": result.label,
+                },
             )
             self.bus.publish(
                 Event(
                     EventType.FOOD_RESULT,
-                    payload={"name": name, "risk": risk, "confidence": conf},
+                    payload={
+                        "name": result.name,
+                        "risk": result.risk,
+                        "gerd_score": result.gerd_score,
+                        "confidence": result.confidence,
+                    },
                 )
             )
 

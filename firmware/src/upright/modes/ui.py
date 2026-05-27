@@ -171,14 +171,18 @@ def draw_food_result(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     name = (ctx.get("name", "?") or "?")[:16]
     risk = ctx.get("risk", "?")
-    advice = (ctx.get("advice", "") or "")[:24]
+    score = int(ctx.get("gerd_score", 0) or 0)
+    hours = float(ctx.get("upright_hours", 0) or 0)
+    advice = (ctx.get("advice", "") or "")[:22]
     theme.title_bar(d, "FOOD ANALYSIS", w)
-    d.text((4, 28), f"Food: {name}", fill=theme._C_FG)
-    d.text((4, 44), f"Risk: {risk}", fill=theme._C_ACCENT)
-    d.text((4, 60), advice, fill=theme._C_FG)
+    d.text((4, 26), name, fill=theme._C_FG)
+    d.text((4, 42), f"{risk}  score {score}/100", fill=theme._C_ACCENT)
+    if hours > 0:
+        d.text((4, 56), f"Stay up {hours:.1f}h", fill=theme._C_FG)
+    d.text((4, 70), advice, fill=theme._C_DIM)
     idx = int(ctx.get("menu_index", 0))
-    theme.menu_row(d, 84, "> Confirm", w=w, selected=(idx == 0))
-    theme.menu_row(d, 104, "> Retake photo", w=w, selected=(idx == 1))
+    theme.menu_row(d, 88, "> Confirm", w=w, selected=(idx == 0))
+    theme.menu_row(d, 108, "> Retake photo", w=w, selected=(idx == 1))
 
 
 def draw_meal_saved(d: ImageDraw.ImageDraw, ctx: dict) -> None:
