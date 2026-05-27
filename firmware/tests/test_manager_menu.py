@@ -157,11 +157,11 @@ def test_double_a_closes_from_main_menu(mgr: ModeManager) -> None:
     assert not mgr.menu.open
 
 
-def test_double_b_opens_symptom_from_watch(mgr: ModeManager) -> None:
+def test_double_b_opens_main_from_watch(mgr: ModeManager) -> None:
     mgr.menu.close()
     mgr._on_b_double(time.time())
     assert mgr.menu.open
-    assert mgr.menu.screen == "symptom_severity"
+    assert mgr.menu.screen == "main"
 
 
 def test_bottom_single_noop_on_watch(mgr: ModeManager) -> None:
@@ -170,23 +170,9 @@ def test_bottom_single_noop_on_watch(mgr: ModeManager) -> None:
     assert not mgr.menu.open
 
 
-def test_top_single_opens_main_from_watch(mgr: ModeManager) -> None:
-    mgr.menu.close()
-    mgr._on_a_short(time.time())
-    assert mgr.menu.open
-    assert mgr.menu.screen == "main"
-
-
-def test_double_b_opens_symptom_from_main(mgr: ModeManager) -> None:
+def test_double_b_selects_on_main_menu(mgr: ModeManager) -> None:
     _open_main(mgr)
-    mgr.menu.index = 0  # Log Meal highlighted
-    mgr._on_b_double(time.time())
-    assert mgr.menu.screen == "symptom_severity"
-
-
-def test_double_b_opens_symptom_from_settings(mgr: ModeManager) -> None:
-    mgr.menu.open = True
-    mgr.menu.screen = "settings"
+    mgr.menu.index = 1  # Log Symptom
     mgr._on_b_double(time.time())
     assert mgr.menu.screen == "symptom_severity"
 

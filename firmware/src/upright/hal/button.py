@@ -11,7 +11,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
-from ..config import PIN_BUTTON_A, PIN_BUTTON_B, TUNABLES
+from ..config import PIN_BUTTON_A, PIN_BUTTON_B
 from ..events import Event, EventBus, EventType
 from .gpio_lgpio import claim_input, read_active_low
 
@@ -19,48 +19,34 @@ log = logging.getLogger("hal.button")
 
 _COOLDOWN = 0.08
 
+# Max gap between taps in a multi-tap gesture (seconds).
+_BTN_TIMING: dict[str, float] = {
+    "a": 0.50,
+    "b": 0.62,  # bottom button — slightly more forgiving
+}
+
 
 def classify(presses: list[float]) -> str:
     n = len(presses)
-    if n >= 2:
+    if n >= 3:
+        return "triple"
+    if n == 2:
         return "double"
     return "single"
-
-
-def ready_to_emit(
-    presses: list[float],
-    now: float,
-    *,
-    gap: float,
-    window: float,
-    pressed_at: float | None,
-) -> bool:
-    """Wait for a possible second tap before emitting a lone single."""
-    if not presses or pressed_at is not None:
-        return False
-    if (now - presses[-1]) < gap:
-        return False
-    if len(presses) == 1 and (now - presses[0]) < window:
-        return False
-    return True
-
-
-def _timing() -> tuple[float, float]:
-    gap = float(getattr(TUNABLES, "button_double_gap_s", 0.40) or 0.40)
-    window = float(getattr(TUNABLES, "button_multi_tap_window_s", 0.60) or 0.60)
-    return gap, max(window, gap + 0.15)
 
 
 @dataclass
 class _BtnState:
     name: str
     pin: int
+    double_gap: float
     presses: list[float] = field(default_factory=list)
     pressed_at: float | None = None
     cooldown_until: float = 0.0
 
 
 def _emit(evt_bus: EventBus, st: _BtnState, pattern: str) -> None:
+    log.info("button %s %s", st.name, pattern)
     evt_bus.publish(
         Event(
             EventType.BUTTON_PRESS,
@@ -76,20 +62,19 @@ def _read_pressed(pin: int) -> bool:
 
 
 def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
-    gap, window = _timing()
     states = [
-        _BtnState("a", PIN_BUTTON_A),
-        _BtnState("b", PIN_BUTTON_B),
+        _BtnState("a", PIN_BUTTON_A, double_gap=_BTN_TIMING["a"]),
+        _BtnState("b", PIN_BUTTON_B, double_gap=_BTN_TIMING["b"]),
     ]
     for st in states:
         claim_input(st.pin)
 
     log.info(
-        "buttons GPIO %s / %s — gap=%.2fs window=%.2fs",
+        "buttons GPIO %s / %s — tap only (A gap=%.2fs | B gap=%.2fs)",
         PIN_BUTTON_A,
         PIN_BUTTON_B,
-        gap,
-        window,
+        _BTN_TIMING["a"],
+        _BTN_TIMING["b"],
     )
 
     while not stop.is_set():
@@ -107,8 +92,11 @@ def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
                 st.presses.append(now)
                 st.pressed_at = None
 
-            if ready_to_emit(
-                st.presses, now, gap=gap, window=window, pressed_at=st.pressed_at
+            if (
+                st.presses
+                and st.pressed_at is None
+                and now >= st.cooldown_until
+                and (now - st.presses[-1]) > st.double_gap
             ):
                 pattern = classify(st.presses)
                 _emit(evt_bus, st, pattern)

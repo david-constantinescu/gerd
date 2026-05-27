@@ -206,8 +206,6 @@ def draw_main_menu(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         y += 18
         if y > h - 24:
             break
-    theme.footer_hint(d, "top:next top2:back bot:ok bot2:symptom", h)
-
 
 def draw_meal_confirm(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)

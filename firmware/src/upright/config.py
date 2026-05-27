@@ -73,7 +73,7 @@ OLED_HEIGHT = 64
 OLED_AUTO_BLANK_SECONDS = 0
 
 # SPI TFT: minimum seconds between full-frame paints (reduces visible scan “wave”).
-DISPLAY_MIN_REFRESH_SECONDS = 120.0
+DISPLAY_MIN_REFRESH_SECONDS = 2.0
 # Watch-face pitch/posture line can refresh more often.
 DISPLAY_PITCH_REFRESH_SECONDS = 1.0
 
@@ -131,9 +131,8 @@ class Tunables:
     # UI
     language: str = "en"
     demo_mode: bool = False  # synthetic week dataset; see services.demo_seed
-    display_blank_minutes: float = 15.0  # blank TFT after inactivity; any button wakes
-    button_double_gap_s: float = 0.40  # pause after last release before classifying tap
-    button_multi_tap_window_s: float = 0.60  # wait this long for a 2nd tap before single
+    display_blank_minutes: float = 0.0  # 0 = keep display on (15 caused “frozen” UI)
+    button_pins_swapped: bool = False  # set true if top/bottom are wired to B/A
 
     # Web control panel (change on first boot in production)
     web_username: str = "softhoarders"

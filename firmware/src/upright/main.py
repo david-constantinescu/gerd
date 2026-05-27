@@ -13,6 +13,7 @@ import signal
 import sys
 import threading
 import time
+from pathlib import Path
 
 from . import __version__
 from .config import reload_tunables
@@ -27,6 +28,20 @@ from .services import meds as meds_service
 from .services import sleep as sleep_service
 
 log = logging.getLogger("upright")
+
+# Boot OLED animation only after Pi power-on, not on `systemctl restart upright`.
+_COLD_BOOT_MAX_UPTIME_S = 120.0
+
+
+def _kernel_uptime_s() -> float:
+    try:
+        return float(Path("/proc/uptime").read_text().split()[0])
+    except (OSError, ValueError, IndexError):
+        return 9999.0
+
+
+def is_cold_boot() -> bool:
+    return _kernel_uptime_s() < _COLD_BOOT_MAX_UPTIME_S
 
 
 def _setup_logging() -> None:

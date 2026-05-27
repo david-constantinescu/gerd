@@ -67,12 +67,31 @@ class EventBus:
         try:
             self._q.put_nowait(event)
         except queue.Full:
-            # Drop oldest on overflow — sensor floods shouldn't crash the FSM.
+            # Never drop button events; shed sensor samples instead.
+            if event.type == EventType.BUTTON_PRESS:
+                try:
+                    self._q.get_nowait()
+                except queue.Empty:
+                    pass
+                self._q.put_nowait(event)
+                return
+            dropped = 0
+            while dropped < 32:
+                try:
+                    old = self._q.get_nowait()
+                except queue.Empty:
+                    break
+                dropped += 1
+                if old.type == EventType.BUTTON_PRESS:
+                    try:
+                        self._q.put_nowait(old)
+                    except queue.Full:
+                        pass
+                    break
             try:
-                self._q.get_nowait()
-            except queue.Empty:
+                self._q.put_nowait(event)
+            except queue.Full:
                 pass
-            self._q.put_nowait(event)
 
     def get(self, timeout: float | None = None) -> Event | None:
         try:

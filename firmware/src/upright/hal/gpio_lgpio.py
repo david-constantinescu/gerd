@@ -19,14 +19,17 @@ def _handle() -> int:
 
 
 def claim_input(pin: int) -> None:
+    import logging
+
     import lgpio  # type: ignore[import-not-found]
 
+    log = logging.getLogger("hal.gpio")
     h = _handle()
     with _lock:
         try:
             lgpio.gpio_claim_input(h, pin, lgpio.SET_PULL_UP)
-        except lgpio.error:
-            pass
+        except lgpio.error as e:
+            log.warning("GPIO %s input claim failed: %s", pin, e)
 
 
 def claim_output(pin: int, *, initial: int = 0) -> None:
