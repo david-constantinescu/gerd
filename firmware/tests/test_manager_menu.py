@@ -9,7 +9,7 @@ import pytest
 
 from upright.events import EventBus
 from upright.modes.manager import ModeManager
-from upright.modes.menu import MAIN_ITEMS, SETTINGS_ITEMS, MenuState
+from upright.modes.menu import MAIN_ITEMS, MenuState, settings_items
 from upright.modes.states import State
 from upright.services.alerts import AlertManager
 from upright.services.logger import Logger
@@ -151,4 +151,4 @@ def test_menu_state_actions_match_screens() -> None:
         assert m.current_action() == MAIN_ITEMS[i][1]
     m.screen = "settings"
     m.index = 0
-    assert m.current_action() == SETTINGS_ITEMS[0][1]
+    assert m.current_action() == settings_items()[0][1]

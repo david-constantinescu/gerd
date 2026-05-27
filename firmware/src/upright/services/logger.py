@@ -227,6 +227,17 @@ class Logger:
                 (time.time(), kind, json.dumps(payload)),
             )
 
+    def reconnect(self) -> None:
+        """Re-open SQLite after the database file was replaced on disk."""
+        self.flush()
+        with self._lock:
+            self._conn.close()
+            self._conn = sqlite3.connect(
+                self.path, check_same_thread=False, isolation_level=None
+            )
+            self._conn.execute("PRAGMA journal_mode=WAL;")
+            self._session_id = None
+
     def close(self) -> None:
         self.flush()
         self.end_session()

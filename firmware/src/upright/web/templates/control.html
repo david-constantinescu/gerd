@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Remote control</h2>
+  <p class="muted">Signed in as <b>{{ username }}</b> · commands reach the device in ~1 s</p>
+  <form method="post" action="/logout" style="margin-bottom:12px">
+    <button type="submit" class="btn-secondary">Sign out</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Quick actions</h2>
+  <div class="cmd-grid" id="cmd-grid">
+    <button type="button" data-cmd="meal">Log meal</button>
+    <button type="button" data-cmd="water">Log water</button>
+    <button type="button" data-cmd="calibrate">Calibrate posture</button>
+    <button type="button" data-cmd="sleep">Sleep mode</button>
+    <button type="button" data-cmd="open_menu">Open on-device menu</button>
+    <button type="button" data-cmd="haptic" data-payload='{"level":"max"}'>Buzz (haptic)</button>
+    <button type="button" data-cmd="demo_enter">Demo mode on</button>
+    <button type="button" data-cmd="demo_exit">Demo mode off</button>
+    <button type="button" data-cmd="idle">Return to watch face</button>
+  </div>
+  <p id="cmd-status" class="muted"></p>
+</section>
+
+<section class="card">
+  <h2>Symptom</h2>
+  <div class="row">
+    <label>Severity
+      <select id="sym-sev">
+        <option value="1">1 Mild</option>
+        <option value="2" selected>2 Moderate</option>
+        <option value="3">3 Severe</option>
+      </select>
+    </label>
+    <label>Type
+      <select id="sym-type">
+        <option>Heartburn</option>
+        <option>Regurgitation</option>
+        <option>Bloating</option>
+        <option>Chest pain</option>
+        <option>Other</option>
+      </select>
+    </label>
+  </div>
+  <button type="button" id="sym-send">Send symptom</button>
+</section>
+
+<section class="card">
+  <h2>Custom command</h2>
+  <div class="row">
+    <select id="cmd-select">
+      {% for c in commands %}
+      <option value="{{ c }}">{{ c }}</option>
+      {% endfor %}
+    </select>
+    <button type="button" id="cmd-send">Send</button>
+  </div>
+  <label>JSON payload (optional)
+    <textarea id="cmd-payload" rows="3" placeholder="{}"></textarea>
+  </label>
+</section>
+{% endblock %}

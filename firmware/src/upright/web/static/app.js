@@ -92,14 +92,15 @@ async function addFood() {
 // ---- sleep page ----
 async function loadSleep() {
   if (!$("#sleep-summary")) return;
-  const rows = await j("/api/sleep");
+  const [rows, stats] = await Promise.all([j("/api/sleep"), j("/api/analytics?days=7")]);
   if (!rows.length) {
-    $("#sleep-summary").textContent = "No sleep data yet.";
+    $("#sleep-summary").textContent = "No sleep data yet. Try Settings → Demo mode on the device.";
     return;
   }
   const last = rows[0];
+  const avg = stats.avg_sleep_score != null ? ` · 7d avg <b>${stats.avg_sleep_score}</b>` : "";
   $("#sleep-summary").innerHTML =
-    `<b>${last.night_of}</b> — ${Math.round(last.duration_s / 3600)}h, score ${last.score}/100, nudges ${last.nudges}`;
+    `<b>${last.night_of}</b> — ${Math.round(last.duration_s / 3600)}h, score ${last.score}/100, nudges ${last.nudges}${avg}`;
   const bar = $("#sleep-bar");
   bar.innerHTML = "";
   for (const [k, cls] of [["left_pct", "left"], ["right_pct", "right"], ["back_pct", "back"], ["front_pct", "front"]]) {
@@ -110,20 +111,30 @@ async function loadSleep() {
     bar.appendChild(s);
   }
   $("#sleep-history").innerHTML = rows.map((r) =>
-    `<li><b>${r.night_of}</b> — score ${r.score}, left ${Math.round(r.left_pct)}%, nudges ${r.nudges}</li>`
+    `<li><b>${r.night_of}</b> — score ${r.score}, left ${Math.round(r.left_pct)}%, back ${Math.round(r.back_pct)}%, nudges ${r.nudges}</li>`
   ).join("");
+  if ($("#sleep-analytics")) {
+    $("#sleep-analytics").innerHTML =
+      `<p>Best night: <b>${stats.best_sleep_night || "—"}</b> (${stats.best_sleep_score ?? "—"}/100)</p>` +
+      `<p class="muted">Meals ${stats.meals} · symptoms ${stats.symptoms} · avg reflux ${stats.avg_reflux_score ?? "—"}</p>`;
+  }
 }
 
 // ---- reports ----
 async function loadReports() {
   if (!$("#morning-report")) return;
-  const rows = await j("/api/sleep");
-  const ev = await j("/api/events?limit=500");
-  const meals = ev.filter((e) => e.kind === "meal").length;
-  const symptoms = ev.filter((e) => e.kind === "symptom").length;
+  const stats = await j("/api/analytics?days=7");
   $("#morning-report").innerHTML =
-    `Meals today: <b>${meals}</b><br>Symptoms: <b>${symptoms}</b><br>Sleep score: <b>${rows[0]?.score ?? "—"}</b>`;
-  $("#trends").innerHTML = `<p class="muted">Rolling 7-day window based on <b>${ev.length}</b> events.</p>`;
+    `7-day meals: <b>${stats.meals}</b><br>` +
+    `Symptoms: <b>${stats.symptoms}</b><br>` +
+    `Food photos: <b>${stats.food_photos}</b><br>` +
+    `Avg sleep score: <b>${stats.avg_sleep_score ?? "—"}</b><br>` +
+    `Avg reflux score: <b>${stats.avg_reflux_score ?? "—"}</b>`;
+  const dayRows = (stats.per_day || []).map((d) =>
+  `<tr><td>${d.date}</td><td>${d.meals}</td><td>${d.symptoms}</td><td>${d.food}</td></tr>`
+  ).join("");
+  $("#trends").innerHTML =
+    `<table class="mini-table"><thead><tr><th>Day</th><th>Meals</th><th>Sx</th><th>Food</th></tr></thead><tbody>${dayRows || "<tr><td colspan=4>no data</td></tr>"}</tbody></table>`;
 }
 
 // ---- settings ----
@@ -171,6 +182,74 @@ async function delMed(id) {
   loadMeds();
 }
 
+async function sendDeviceCommand(command, payload = {}) {
+  const r = await fetch("/api/device/command", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ command, payload }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  return data;
+}
+
+function initControl() {
+  const status = $("#cmd-status");
+  const grid = $("#cmd-grid");
+  if (!grid) return;
+
+  const flash = (msg, ok = true) => {
+    if (status) {
+      status.textContent = msg;
+      status.style.color = ok ? "" : "var(--err)";
+    }
+  };
+
+  grid.querySelectorAll("button[data-cmd]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        let payload = {};
+        if (btn.dataset.payload) payload = JSON.parse(btn.dataset.payload);
+        const res = await sendDeviceCommand(btn.dataset.cmd, payload);
+        flash(`Sent ${res.command} → ${res.queued}`);
+      } catch (e) {
+        flash(e.message, false);
+      }
+    });
+  });
+
+  const sym = $("#sym-send");
+  if (sym) {
+    sym.addEventListener("click", async () => {
+      try {
+        await sendDeviceCommand("symptom", {
+          severity: parseInt($("#sym-sev").value, 10),
+          type: $("#sym-type").value,
+        });
+        flash("Symptom queued");
+      } catch (e) {
+        flash(e.message, false);
+      }
+    });
+  }
+
+  const custom = $("#cmd-send");
+  if (custom) {
+    custom.addEventListener("click", async () => {
+      try {
+        const cmd = $("#cmd-select").value;
+        const raw = ($("#cmd-payload").value || "").trim();
+        const payload = raw ? JSON.parse(raw) : {};
+        const res = await sendDeviceCommand(cmd, payload);
+        flash(`Sent ${res.command}`);
+      } catch (e) {
+        flash(e.message, false);
+      }
+    });
+  }
+}
+
 // dispatch
 window.addEventListener("DOMContentLoaded", () => {
   refreshLive();
@@ -178,6 +257,7 @@ window.addEventListener("DOMContentLoaded", () => {
   loadSleep();
   loadReports();
   initSettings();
+  initControl();
   setInterval(refreshLive, 2000);
 });
 window.logMeal = logMeal;

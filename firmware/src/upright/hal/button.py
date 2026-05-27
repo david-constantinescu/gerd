@@ -19,10 +19,10 @@ log = logging.getLogger("hal.button")
 
 _COOLDOWN = 0.08
 
-# Max gap between taps in a multi-tap gesture (seconds).
+# Max gap between taps in a multi-tap gesture (seconds). Short = "zap zap" double-tap.
 _BTN_TIMING: dict[str, float] = {
-    "a": 0.50,
-    "b": 0.62,  # bottom button — slightly more forgiving
+    "a": 0.28,
+    "b": 0.28,
 }
 
 

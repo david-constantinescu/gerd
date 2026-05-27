@@ -17,9 +17,29 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, render_template, request, send_file
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
 
 from ..config import CONFIG_PATH, DB_PATH, FOODS_PATH, TUNABLES, Tunables, reload_tunables
+from .auth import (
+    is_authenticated,
+    login_user,
+    logout_user,
+    require_login,
+    session_secret,
+    verify_credentials,
+)
+from ..services import analytics as analytics_service
+from ..services import demo_seed
 from ..services import foods as foods_service
 from ..services.logger import Logger
 
@@ -28,6 +48,23 @@ app = Flask(
     template_folder=str(Path(__file__).parent / "templates"),
     static_folder=str(Path(__file__).parent / "static"),
 )
+app.secret_key = session_secret()
+
+# Inbox kinds the firmware handles in ModeManager._handle_inbox
+DEVICE_COMMANDS: dict[str, str] = {
+    "meal": "meal",
+    "symptom": "cmd_symptom",
+    "water": "water",
+    "calibrate": "calibrate",
+    "sleep": "cmd_sleep",
+    "open_menu": "cmd_open_menu",
+    "haptic": "cmd_haptic",
+    "demo_enter": "cmd_demo_enter",
+    "demo_exit": "cmd_demo_exit",
+    "idle": "cmd_idle",
+    "med_ack": "med_ack",
+    "config_reload": "config_reloaded",
+}
 
 
 def _db() -> Logger:
@@ -66,6 +103,40 @@ def settings():
     )
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login_page():
+    if request.method == "POST":
+        user = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        if verify_credentials(user, password):
+            login_user(user)
+            nxt = request.args.get("next") or url_for("control_panel")
+            return redirect(nxt)
+        return render_template(
+            "login.html", active="control", error="Invalid username or password"
+        ), 401
+    if is_authenticated():
+        return redirect(url_for("control_panel"))
+    return render_template("login.html", active="control")
+
+
+@app.post("/logout")
+def logout_page():
+    logout_user()
+    return redirect(url_for("login_page"))
+
+
+@app.route("/control")
+@require_login
+def control_panel():
+    return render_template(
+        "control.html",
+        active="control",
+        username=session.get("username", ""),
+        commands=sorted(DEVICE_COMMANDS.keys()),
+    )
+
+
 # -------------------------------------------------- JSON API
 
 
@@ -92,6 +163,32 @@ def api_live():
             "now": datetime.now().isoformat(),
         }
     )
+
+
+@app.post("/api/device/command")
+@require_login
+def api_device_command():
+    """Queue a command for the firmware loop (processed within ~1 s)."""
+    data = request.get_json(silent=True) or {}
+    cmd = (data.get("command") or "").strip()
+    if cmd not in DEVICE_COMMANDS:
+        return jsonify({"ok": False, "error": f"unknown command: {cmd}"}), 400
+    payload = data.get("payload") or {}
+    db = _db()
+    db.push_inbox(DEVICE_COMMANDS[cmd], payload)
+    db.close()
+    return jsonify({"ok": True, "command": cmd, "queued": DEVICE_COMMANDS[cmd]})
+
+
+@app.get("/api/device/commands")
+@require_login
+def api_device_commands():
+    return jsonify({"commands": sorted(DEVICE_COMMANDS.keys())})
+
+
+@app.get("/api/auth/status")
+def api_auth_status():
+    return jsonify({"authenticated": is_authenticated(), "username": session.get("username")})
 
 
 @app.post("/api/log/meal")
@@ -207,6 +304,35 @@ def api_settings():
         db.close()
         return jsonify({"ok": True})
     return jsonify(asdict(TUNABLES))
+
+
+@app.route("/api/analytics")
+def api_analytics():
+    days = min(int(request.args.get("days", 7)), 30)
+    db = _db()
+    summary = analytics_service.week_summary(db, days=days)
+    db.close()
+    return jsonify(summary)
+
+
+@app.post("/api/demo/enter")
+@require_login
+def api_demo_enter():
+    db = _db()
+    demo_seed.enter_demo(db)
+    db.close()
+    reload_tunables()
+    return jsonify({"ok": True, "demo_mode": True})
+
+
+@app.post("/api/demo/exit")
+@require_login
+def api_demo_exit():
+    db = _db()
+    demo_seed.exit_demo(db)
+    db.close()
+    reload_tunables()
+    return jsonify({"ok": True, "demo_mode": False})
 
 
 @app.route("/api/sleep")

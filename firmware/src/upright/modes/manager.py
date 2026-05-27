@@ -7,6 +7,7 @@ drives alerts and logging. Runs in the main thread.
 from __future__ import annotations
 
 import logging
+import math
 import os
 import threading
 import time
@@ -17,12 +18,15 @@ from ..config import (
     DISPLAY_MIN_REFRESH_SECONDS,
     DISPLAY_PITCH_REFRESH_SECONDS,
     TUNABLES,
+    reload_tunables,
 )
 from ..events import Event, EventBus, EventType
 from ..hal import imu
 from ..hal.display import Display
 from ..services.alerts import AlertManager
 from ..services.logger import Logger
+from ..services import analytics as analytics_service
+from ..services import demo_seed
 from ..services.meds import MedReminders
 from ..services.sleep import SleepTracker
 from .. import __version__
@@ -31,6 +35,8 @@ from .menu import SYMPTOM_SEVERITIES, SYMPTOM_TYPES, MenuState
 from .states import State, can_transition
 
 log = logging.getLogger("modes.manager")
+
+BOOT_SCREEN_SECONDS = 2.8
 
 # Screens where bottom tap does nothing (busy or passive).
 _NO_SELECT_SCREENS = frozenset({"food_analysing", "food_preview", "flash"})
@@ -94,6 +100,8 @@ class ModeManager:
             "true",
             "yes",
         )
+        self._boot_until = 0.0
+        self._demo_anim_start = time.time()
 
     # -------------------------------------------------- transitions
 
@@ -119,7 +127,25 @@ class ModeManager:
 
     # -------------------------------------------------- handlers
 
+    def _demo_tick(self, now: float) -> None:
+        """Synthetic live sensors when demo_mode is on."""
+        t = now - self._demo_anim_start
+        self.ctx.pitch = round(7.0 * math.sin(t / 4.0), 1)
+        self.ctx.roll = round(5.0 * math.cos(t / 5.5), 1)
+        adjusted = max(0.0, abs(self.ctx.pitch) - TUNABLES.posture_deadzone_deg)
+        self.ctx.posture_pct = max(
+            0.0, 100.0 - adjusted * TUNABLES.posture_pct_slope
+        )
+        self.ctx.bpm = 68.0 + 5.0 * math.sin(t / 12.0)
+        self.ctx.rmssd = 40.0 + 10.0 * math.cos(t / 15.0)
+        self.ctx.battery_pct = 87
+        self.ctx.battery_low = False
+        self.ctx.battery_source = "demo"
+        self.ctx.alert_active = False
+
     def _handle_posture(self, ev: Event) -> None:
+        if TUNABLES.demo_mode:
+            return
         raw_pitch = ev.payload["pitch"] - self.ctx.calibration_baseline_pitch
         alpha = max(0.05, min(1.0, TUNABLES.pitch_display_alpha))
         if self._pitch_display is None:
@@ -192,6 +218,8 @@ class ModeManager:
         self.db.posture(self.ctx.pitch, self.ctx.roll, self.ctx.state.value)
 
     def _handle_hrv(self, ev: Event) -> None:
+        if TUNABLES.demo_mode:
+            return
         self.ctx.bpm = ev.payload.get("bpm")
         self.ctx.rmssd = ev.payload.get("rmssd")
 
@@ -227,6 +255,9 @@ class ModeManager:
         btn = ev.payload.get("button", "?")
         log.info("button %s: %s", btn, pattern)
         now = time.time()
+        if self.oled.wake():
+            self._paint_now()
+        self.oled.note_activity()
         self.menu.touch(now)
         if btn == "a":
             if pattern == "double":
@@ -308,6 +339,7 @@ class ModeManager:
             "med_ack": "main",
             "med_info": "main",
             "settings": "main",
+            "stats": "settings",
             "about": "main",
             "food_analysing": "food_photo",
         }
@@ -349,6 +381,24 @@ class ModeManager:
             self.menu.close()
             self.ctx.calibration_step = 0
             self._transition(State.CALIBRATING)
+        elif action == "stats":
+            self.menu.screen = "stats"
+            self.menu.index = 0
+        elif action == "stats_done":
+            self._menu_back()
+        elif action == "demo_enter":
+            try:
+                demo_seed.enter_demo(self.db)
+                self._demo_anim_start = time.time()
+                reload_tunables()
+                self.menu.flash("Demo week loaded", now, seconds=2.0)
+            except OSError as e:
+                log.error("demo seed failed: %s", e)
+                self.menu.flash("Demo failed", now, seconds=2.0)
+        elif action == "demo_exit":
+            demo_seed.exit_demo(self.db)
+            reload_tunables()
+            self.menu.flash("Demo ended", now, seconds=2.0)
         elif action == "meal_yes":
             self._log_meal()
             self.menu.screen = "food_photo"
@@ -507,6 +557,35 @@ class ModeManager:
                 self._transition(State.CALIBRATING)
             elif kind == "config_reloaded":
                 self.bus.publish(Event(EventType.CONFIG_RELOADED))
+            elif kind == "cmd_sleep":
+                self.menu.close()
+                self.sleep.begin_night()
+                self._transition(State.PRE_SLEEP)
+            elif kind == "cmd_open_menu":
+                self.menu.open_main(time.time())
+            elif kind == "cmd_haptic":
+                if TUNABLES.haptic_alerts_enabled:
+                    level = str(payload.get("level", "medium"))
+                    self.alerts.motor.buzz_async(level)
+            elif kind == "cmd_demo_enter":
+                demo_seed.enter_demo(self.db)
+                self._demo_anim_start = time.time()
+                reload_tunables()
+            elif kind == "cmd_demo_exit":
+                demo_seed.exit_demo(self.db)
+                reload_tunables()
+            elif kind == "cmd_idle":
+                self.menu.close()
+                if self.ctx.state not in (State.IDLE, State.POST_MEAL):
+                    self._transition(State.IDLE)
+            elif kind == "cmd_symptom":
+                self.db.event(
+                    "symptom",
+                    {
+                        "severity": int(payload.get("severity", 2)),
+                        "type": payload.get("type", "Heartburn"),
+                    },
+                )
 
     # -------------------------------------------------- sleep entry
 
@@ -540,6 +619,7 @@ class ModeManager:
         base = (
             state.value,
             datetime.now().strftime("%H:%M"),
+            int(ctx.get("boot_progress", 0) * 20) if state == State.BOOTING else 0,
             int(ctx.get("battery_pct", 100) // 5) * 5,
             bool(ctx.get("battery_low")),
             int(float(ctx.get("battery_low_age_s", 0)) // 2),
@@ -583,6 +663,8 @@ class ModeManager:
             sev = last_symptom.get("severity", "")
             last_symptom_text = f"{typ} sev{sev}" if typ else ""
         med_line = self.meds.status_line()
+        week = analytics_service.week_summary(self.db, days=7)
+        analytics_lines = analytics_service.oled_lines(week)
         if meal:
             dt = datetime.fromtimestamp(meal["ts"])
             ago = datetime.now() - dt
@@ -640,6 +722,20 @@ class ModeManager:
             "food_upright_hours": food_upright_hours,
             "hotspot_ssid": TUNABLES.hotspot_ssid,
             "hotspot_ip": TUNABLES.hotspot_ip,
+            "demo_mode": TUNABLES.demo_mode,
+            "analytics_lines": analytics_lines,
+            "sleep_week_avg": week.get("avg_sleep_score"),
+            "sleep_best_line": (
+                f"Best {week.get('best_sleep_night', '')} {week.get('best_sleep_score')}"
+                if week.get("best_sleep_score") is not None
+                else ""
+            ),
+            "version": __version__,
+            "boot_progress": (
+                max(0.0, min(1.0, 1.0 - (self._boot_until - time.time()) / BOOT_SCREEN_SECONDS))
+                if self._boot_until > time.time()
+                else 1.0
+            ),
             "meal_age_bucket": meal_age_bucket,
             "remaining": remaining,
             "progress": progress,
@@ -655,7 +751,6 @@ class ModeManager:
             "step": ["Stand upright", "Lean forward", "Lie on left"][
                 min(2, self.ctx.calibration_step)
             ],
-            "version": __version__,
             "symptom_severity_label": self._symptom_severity_label,
             "symptom_type_label": self._symptom_type_label,
             "meal_window_text": (
@@ -668,6 +763,7 @@ class ModeManager:
         }
 
     def _paint_now(self) -> None:
+        self.oled.note_activity()
         state = State.IDLE if self._display_demo else self.ctx.state
         view = self._view_ctx()
         try:
@@ -680,18 +776,17 @@ class ModeManager:
     # -------------------------------------------------- main loop
 
     def run(self, stop: threading.Event) -> None:
-        self._transition(State.IDLE)
-        if self._display_demo:
-            log.info("display demo mode enabled — holding SYSTEM OK screen")
-        # Paint once immediately so the panel is not blank after boot.
+        self._boot_until = time.time() + BOOT_SCREEN_SECONDS
+        self.ctx.state = State.BOOTING
+        log.info("boot screen for %.1fs", BOOT_SCREEN_SECONDS)
         try:
-            boot_state = State.IDLE if self._display_demo else self.ctx.state
-            boot_view = self._view_ctx()
-            ui.render(boot_state, boot_view, self.oled)
-            self._last_view_sig = self._view_signature(boot_state, boot_view)
+            ui.render(State.BOOTING, self._view_ctx(), self.oled)
             self._last_render = time.time()
         except Exception as e:  # pragma: no cover
-            log.warning("initial render failed: %s", e)
+            log.warning("initial boot render failed: %s", e)
+        if self._display_demo:
+            log.info("display demo env — holding SYSTEM OK screen")
+            self._transition(State.IDLE)
         while not stop.is_set():
             ev = self.bus.get(timeout=0.2)
             if ev is not None:
@@ -713,11 +808,18 @@ class ModeManager:
 
             now = time.time()
 
+            if self.ctx.state == State.BOOTING and now >= self._boot_until:
+                self._transition(State.IDLE)
+
+            if TUNABLES.demo_mode:
+                self._demo_tick(now)
+
             # housekeeping (~once per second)
             if now - self._last_sched_tick > 1.0:
                 self._last_sched_tick = now
                 self._handle_inbox()
                 self.meds.tick()
+                self.oled.auto_blank_tick()
                 self._maybe_exit_post_meal()
                 self._maybe_enter_sleep()
                 if self.menu.idle_expired(now):
@@ -730,10 +832,14 @@ class ModeManager:
 
             # Full-frame SPI refresh only when content meaningfully changes, and
             # at most once per DISPLAY_MIN_REFRESH_SECONDS (clock via minute in sig).
-            state = State.IDLE if self._display_demo else self.ctx.state
+            state = self.ctx.state
+            if self._display_demo:
+                state = State.IDLE
             view = self._view_ctx()
             sig = self._view_signature(state, view)
             changed = sig != self._last_view_sig
+            if state == State.BOOTING:
+                changed = True
             urgent = False
             if changed and self._last_view_sig is not None:
                 prev = self._last_view_sig
@@ -752,7 +858,8 @@ class ModeManager:
                 self._last_render = now
                 self._last_view_sig = sig
                 try:
-                    ui.render(state, view, self.oled)
+                    if not self.oled.is_blanked:
+                        ui.render(state, view, self.oled)
                 except Exception as e:  # pragma: no cover
                     log.warning("render failed: %s", e)
 

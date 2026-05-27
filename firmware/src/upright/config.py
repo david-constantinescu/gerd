@@ -69,7 +69,8 @@ I2C_ADDR_OLED = 0x3C  # SH1106 modules sometimes use 0x3D
 
 OLED_WIDTH = 128
 OLED_HEIGHT = 64
-OLED_AUTO_BLANK_SECONDS = 0  # keep SPI TFT on continuously
+# Legacy constant; display blanking uses Tunables.display_blank_minutes at runtime.
+OLED_AUTO_BLANK_SECONDS = 0
 
 # SPI TFT: minimum seconds between full-frame paints (reduces visible scan “wave”).
 DISPLAY_MIN_REFRESH_SECONDS = 120.0
@@ -129,6 +130,12 @@ class Tunables:
 
     # UI
     language: str = "en"
+    demo_mode: bool = False  # synthetic week dataset; see services.demo_seed
+    display_blank_minutes: float = 15.0  # blank TFT after inactivity; any button wakes
+
+    # Web control panel (change on first boot in production)
+    web_username: str = "softhoarders"
+    web_password: str = "0031"
 
     @classmethod
     def load(cls, path: Path | None = None) -> Tunables:

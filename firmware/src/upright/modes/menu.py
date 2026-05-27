@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from ..config import TUNABLES
+
 MAIN_ITEMS: list[tuple[str, str]] = [
     ("Log Meal", "meal"),
     ("Log Symptom", "symptom"),
@@ -14,9 +16,20 @@ MAIN_ITEMS: list[tuple[str, str]] = [
     ("About", "about"),
 ]
 
-SETTINGS_ITEMS: list[tuple[str, str]] = [
-    ("Calibrate posture", "calibrate"),
-]
+def settings_items() -> list[tuple[str, str]]:
+    items: list[tuple[str, str]] = [
+        ("Calibrate posture", "calibrate"),
+        ("Week stats", "stats"),
+    ]
+    if TUNABLES.demo_mode:
+        items.append(("Exit demo mode", "demo_exit"))
+    else:
+        items.append(("Demo mode", "demo_enter"))
+    return items
+
+
+# Back-compat for imports/tests that expect a static list
+SETTINGS_ITEMS: list[tuple[str, str]] = settings_items()
 
 SYMPTOM_SEVERITIES: list[str] = [
     "1 - Mild",
@@ -90,8 +103,8 @@ class MenuState:
         if self.screen == "food_result":
             return 2
         if self.screen == "settings":
-            return len(SETTINGS_ITEMS)
-        if self.screen in ("about", "med_info"):
+            return len(settings_items())
+        if self.screen in ("about", "med_info", "stats"):
             return 1
         return 1
 
@@ -126,7 +139,9 @@ class MenuState:
         if self.screen == "med_prompt" and self.pending_med:
             return "med_ack"
         if self.screen == "settings":
-            return SETTINGS_ITEMS[self.index][1]
+            return settings_items()[self.index][1]
+        if self.screen == "stats":
+            return "stats_done"
         if self.screen == "med_info":
             return "med_done"
         if self.screen == "about":

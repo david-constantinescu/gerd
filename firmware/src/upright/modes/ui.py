@@ -7,13 +7,13 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 
 from . import menu as menu_mod
+from .menu import settings_items
 from . import ui_theme as theme
 from .states import State
 
 _SYMPTOM_TYPES = menu_mod.SYMPTOM_TYPES
 _SYMPTOM_SEVERITIES = menu_mod.SYMPTOM_SEVERITIES
 _MAIN_ITEMS = menu_mod.MAIN_ITEMS
-_SETTINGS_ITEMS = menu_mod.SETTINGS_ITEMS
 
 
 def _wh(ctx: dict) -> tuple[int, int]:
@@ -120,8 +120,13 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
     d.text((4, 4), now, fill=theme._C_FG)
     d.text((50, 4), status, fill=theme._C_ACCENT)
+    if ctx.get("demo_mode"):
+        d.text((w - 44, 4), "DEMO", fill=theme._C_WARN)
     _draw_battery(d, ctx, w)
     d.text((4, 16), f"{date}  {wear} side", fill=theme._C_DIM)
+    week_avg = ctx.get("sleep_week_avg")
+    if week_avg is not None:
+        d.text((w - 52, 16), f"S{week_avg}", fill=theme._C_DIM)
 
     theme.hr(d, 28, w)
 
@@ -320,12 +325,26 @@ def draw_med_info(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     theme.menu_row(d, 64, "> Done", w=w, selected=True)
 
 
+def draw_analytics(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "WEEK STATS", w)
+    y = 26
+    lines = ctx.get("analytics_lines") or ["No data yet"]
+    for line in lines:
+        if y > h - 28:
+            break
+        d.text((4, y), str(line)[:26], fill=theme._C_FG if y == 26 else theme._C_DIM)
+        y += 12
+    theme.menu_row(d, h - 22, "> Done", w=w, selected=True)
+
+
 def draw_settings(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     theme.title_bar(d, "SETTINGS", w)
     idx = int(ctx.get("menu_index", 0))
     y = 28
-    for i, (label, _) in enumerate(_SETTINGS_ITEMS):
+    items = settings_items()
+    for i, (label, _) in enumerate(items):
         prefix = "> " if i == idx else "  "
         theme.menu_row(d, y, f"{prefix}{label}", w=w, selected=(i == idx))
         y += 18
@@ -361,8 +380,13 @@ def draw_calibrating(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
 def draw_booting(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
-    d.text((8, h // 2 - 20), "UPRIGHT", fill=theme._C_FG)
-    d.text((8, h // 2), "starting...", fill=theme._C_ACCENT)
+    ver = ctx.get("version", "0.1.0")
+    theme.title_bar(d, "UPRIGHT", w)
+    d.text((8, 28), "GERD wearable", fill=theme._C_DIM)
+    d.text((8, 44), f"v{ver}", fill=theme._C_FG)
+    d.text((8, 60), "starting...", fill=theme._C_ACCENT)
+    frac = float(ctx.get("boot_progress", 0.0))
+    theme.progress_bar(d, 8, 78, max(40, w - 16), 8, frac)
 
 
 def draw_sleep(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -395,6 +419,15 @@ def draw_sleep(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, y), f"L{left_p} R{right_p} B{back_p}%", fill=theme._C_DIM)
     y += 14
     d.text((4, y), f"Roll {roll:+.0f}  clip:{wear}", fill=theme._C_DIM)
+    y += 14
+    week_avg = ctx.get("sleep_week_avg")
+    if week_avg is not None:
+        d.text((4, y), f"7d sleep avg {week_avg}/100", fill=theme._C_DIM)
+        y += 12
+    best = (ctx.get("sleep_best_line") or "")[:24]
+    if best:
+        d.text((4, y), best, fill=theme._C_DIM)
+        y += 12
     if pos != "LEFT" and nudges < n_max and cooldown == 0:
         d.text((4, min(h - 14, y + 14)), "Nudge if not left", fill=theme._C_WARN)
     elif cooldown > 0:
@@ -416,6 +449,7 @@ _MENU_DRAWERS = {
     "med_ack": draw_med_ack,
     "med_info": draw_med_info,
     "settings": draw_settings,
+    "stats": draw_analytics,
     "about": draw_about,
     "flash": draw_flash,
 }

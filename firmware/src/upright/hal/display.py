@@ -12,9 +12,9 @@ from typing import Any
 from ..config import (
     DATA_DIR,
     I2C_ADDR_OLED,
-    OLED_AUTO_BLANK_SECONDS,
     OLED_HEIGHT,
     OLED_WIDTH,
+    TUNABLES,
     SPI_DISPLAY_BL,
     SPI_DISPLAY_DC,
     SPI_DISPLAY_DEVICE,
@@ -518,6 +518,7 @@ class Display:
         self._device = None
         self._cfg: dict[str, Any] | None = None
         self._dry_run = dry_run
+        self._last_activity = time.time()
         self._last_show = 0.0
         self._blanked = False
         self.width = OLED_WIDTH
@@ -586,11 +587,30 @@ class Display:
             return Image.new("RGB", (self.width, self.height), (0, 0, 0))
         return Image.new("1", (self.width, self.height), 0)
 
+    def note_activity(self) -> None:
+        """Reset display sleep timer (button press, menu use, etc.)."""
+        self._last_activity = time.time()
+
+    def wake(self) -> bool:
+        """Mark panel awake after blanking; caller should repaint."""
+        self.note_activity()
+        if not self._blanked:
+            return False
+        self._blanked = False
+        return True
+
+    def _blank_timeout_s(self) -> float:
+        minutes = float(getattr(TUNABLES, "display_blank_minutes", 0) or 0)
+        if minutes <= 0:
+            return 0.0
+        return minutes * 60.0
+
     def show(self, image) -> None:
         if self._device is None:
             if self._dry_run:
                 log.debug("display frame (dry-run) %dx%d", self.width, self.height)
             return
+        self.note_activity()
         out = image
         if self.color and image.mode != "RGB":
             out = image.convert("RGB")
@@ -604,14 +624,20 @@ class Display:
             self._device.display(out)
 
     def auto_blank_tick(self) -> None:
-        if self._blanked or self._device is None:
+        timeout = self._blank_timeout_s()
+        if timeout <= 0 or self._blanked or self._device is None:
             return
-        if time.time() - self._last_show > OLED_AUTO_BLANK_SECONDS:
+        if time.time() - self._last_activity > timeout:
             try:
                 self._device.clear()
             except Exception:
                 pass
             self._blanked = True
+            log.debug("display blanked after %.0fs idle", timeout)
+
+    @property
+    def is_blanked(self) -> bool:
+        return self._blanked
 
     def clear(self) -> None:
         if self._device is not None:

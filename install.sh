@@ -136,10 +136,18 @@ if [[ ${HW_STACK_RAN:-0} -eq 0 ]]; then
 fi
 systemctl enable --now upright.service upright-web.service 2>/dev/null || true
 
+if [[ "${UPRIGHT_INSTALL_TAILSCALE:-0}" == "1" ]] && [[ -f $INSTALL_DIR/scripts/pi-install-tailscale.sh ]]; then
+  log "installing Tailscale (UPRIGHT_INSTALL_TAILSCALE=1)…"
+  chmod +x "$INSTALL_DIR/scripts/pi-install-tailscale.sh"
+  TAILSCALE_AUTH_KEY="${TAILSCALE_AUTH_KEY:-}" TAILSCALE_HOSTNAME="${TAILSCALE_HOSTNAME:-upright-pi}" \
+    bash "$INSTALL_DIR/scripts/pi-install-tailscale.sh" || warn "Tailscale install failed — run scripts/pi-install-tailscale.sh manually"
+fi
+
 log "done!"
 log ""
 log "Next steps:"
 log "  • reboot once so I²C / I²S come up: sudo reboot"
 log "  • join 'UpRight-AP' wifi (password: upright123)"
 log "  • open http://192.168.1.1 in your phone browser"
+log "  • remote access: see reference docs/TAILSCALE.md (optional)"
 log "  • follow logs:  journalctl -u upright -f"
