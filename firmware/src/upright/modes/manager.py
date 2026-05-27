@@ -7,6 +7,7 @@ drives alerts and logging. Runs in the main thread.
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -67,6 +68,11 @@ class ModeManager:
         self.ctx = Context()
         self._last_render = 0.0
         self._last_sched_tick = 0.0
+        self._display_demo = os.environ.get("UPRIGHT_DISPLAY_DEMO", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
 
     # -------------------------------------------------- transitions
 
@@ -264,6 +270,7 @@ class ModeManager:
             remaining = f"{int(left // 3600)}h {int((left % 3600) // 60):02d}m"
             progress = elapsed / self.ctx.meal_window_s if self.ctx.meal_window_s else 0.0
         return {
+            "display_demo": self._display_demo,
             "bpm": f"{int(self.ctx.bpm)}" if self.ctx.bpm else "--",
             "battery_pct": self.ctx.battery_pct,
             "battery_low": self.ctx.battery_low,
@@ -291,7 +298,9 @@ class ModeManager:
     # -------------------------------------------------- main loop
 
     def run(self, stop: threading.Event) -> None:
-        self._transition(State.IDLE)
+        if self._display_demo:
+            self._transition(State.IDLE)
+            log.info("display demo mode enabled — holding SYSTEM OK screen")
         while not stop.is_set():
             ev = self.bus.get(timeout=0.2)
             if ev is not None:
@@ -316,11 +325,12 @@ class ModeManager:
                 self._maybe_exit_post_meal()
                 self._maybe_enter_sleep()
 
-            # render at 1 Hz (SPI TFT)
-            if now - self._last_render > 1.0:
+            # render at ~10 Hz; Display.show() skips unchanged frames.
+            if now - self._last_render > 0.1:
                 self._last_render = now
                 try:
-                    ui.render(self.ctx.state, self._view_ctx(), self.oled)
+                    state = State.IDLE if self._display_demo else self.ctx.state
+                    ui.render(state, self._view_ctx(), self.oled)
                 except Exception as e:  # pragma: no cover
                     log.warning("render failed: %s", e)
                 self.oled.auto_blank_tick()

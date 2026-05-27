@@ -8,11 +8,11 @@ from PIL import Image, ImageDraw
 
 from .states import State
 
-# ST7735R colour palette
-_C_BG = (8, 16, 32)
-_C_FG = (240, 240, 255)
-_C_ACCENT = (80, 220, 120)
-_C_WARN = (255, 180, 60)
+# High-contrast TFT palette (readability over aesthetics).
+_C_BG = (255, 255, 255)
+_C_FG = (0, 0, 0)
+_C_ACCENT = (0, 0, 0)
+_C_WARN = (0, 0, 0)
 
 
 def _bar_mono(d: ImageDraw.ImageDraw, x: int, y: int, w: int, h: int, frac: float) -> None:
@@ -77,6 +77,16 @@ def draw_post_meal_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, 4), f"{now} POST-MEAL", fill=_C_ACCENT)
     d.text((4, 28), f"Stay up {remaining}", fill=_C_FG)
     _bar_rgb(d, 4, 48, 118, 10, frac)
+
+
+def draw_system_ok_rgb(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    d.rectangle((0, 0, 127, 159), fill=(0, 40, 90))
+    d.text((8, 12), "UPRIGHT", fill=(255, 255, 255))
+    d.text((8, 30), "SYSTEM OK", fill=(80, 255, 120))
+    d.text((8, 50), "DISPLAY + SPI", fill=(255, 255, 0))
+    d.text((8, 64), "WEB + APP RUNNING", fill=(180, 255, 255))
+    d.text((8, 78), f"BAT {ctx.get('battery_text','--')}", fill=_C_FG)
+    d.text((8, 92), "DEMO MODE", fill=_C_WARN)
 
 
 def draw_booting_rgb(d: ImageDraw.ImageDraw, _ctx: dict) -> None:
@@ -175,7 +185,9 @@ def render(state: State, ctx: dict, oled) -> None:
     if color:
         img = Image.new("RGB", (w, h), _C_BG)
         d = ImageDraw.Draw(img)
-        if state == State.IDLE and ctx.get("alert_active"):
+        if ctx.get("display_demo"):
+            draw_system_ok_rgb(d, ctx)
+        elif state == State.IDLE and ctx.get("alert_active"):
             draw_alert_rgb(d, ctx)
         else:
             drawer = _RGB_DRAWERS.get(state, draw_booting_rgb)

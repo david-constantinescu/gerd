@@ -6,6 +6,7 @@ import json
 import logging
 import threading
 import time
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -32,8 +33,77 @@ _DISPLAY_LOCK = threading.Lock()
 
 DISPLAY_CONFIG_PATH = DATA_DIR / "display.json"
 
-# Adafruit ST7735R breakout on Pi (userspace SPI via luma — no fbtft overlay).
+# Userspace SPI (no fbtft overlay). Prefer slow, correct pin order first — fast/wrong
+# init looks like random noise on the panel.
 _SPI_CANDIDATES: list[dict[str, Any]] = [
+    {
+        "driver": "st7735",
+        "width": 128,
+        "height": 128,
+        "dc": SPI_DISPLAY_DC,
+        "rst": SPI_DISPLAY_RST,
+        "rotate": 0,
+        "bgr": False,
+        "h_offset": 0,
+        "v_offset": 0,
+        "port": SPI_DISPLAY_PORT,
+        "device": SPI_DISPLAY_DEVICE,
+        "bus_speed_hz": 500_000,
+    },
+    {
+        "driver": "st7735",
+        "width": 128,
+        "height": 128,
+        "dc": 25,
+        "rst": 24,
+        "rotate": 0,
+        "bgr": False,
+        "h_offset": 0,
+        "v_offset": 0,
+        "port": SPI_DISPLAY_PORT,
+        "device": SPI_DISPLAY_DEVICE,
+        "bus_speed_hz": 500_000,
+    },
+    {
+        "driver": "st7735",
+        "width": 128,
+        "height": 128,
+        "dc": SPI_DISPLAY_DC,
+        "rst": SPI_DISPLAY_RST,
+        "rotate": 0,
+        "bgr": True,
+        "h_offset": 2,
+        "v_offset": 1,
+        "port": SPI_DISPLAY_PORT,
+        "device": SPI_DISPLAY_DEVICE,
+        "bus_speed_hz": 500_000,
+    },
+    {
+        "driver": "adafruit_st7735r",
+        "width": 128,
+        "height": 160,
+        "dc": SPI_DISPLAY_DC,
+        "rst": SPI_DISPLAY_RST,
+        "rotate": 90,
+        "x_offset": 0,
+        "y_offset": 0,
+        "port": SPI_DISPLAY_PORT,
+        "device": SPI_DISPLAY_DEVICE,
+        "bus_speed_hz": 2_000_000,
+    },
+    {
+        "driver": "adafruit_st7735r",
+        "width": 128,
+        "height": 160,
+        "dc": SPI_DISPLAY_DC,
+        "rst": -1,
+        "rotate": 90,
+        "x_offset": 0,
+        "y_offset": 0,
+        "port": SPI_DISPLAY_PORT,
+        "device": SPI_DISPLAY_DEVICE,
+        "bus_speed_hz": 1_000_000,
+    },
     {
         "driver": "st7735",
         "width": SPI_DISPLAY_WIDTH,
@@ -46,6 +116,76 @@ _SPI_CANDIDATES: list[dict[str, Any]] = [
         "v_offset": 0,
         "port": SPI_DISPLAY_PORT,
         "device": SPI_DISPLAY_DEVICE,
+        "bus_speed_hz": 1_000_000,
+    },
+    {
+        "driver": "st7735",
+        "width": 160,
+        "height": 128,
+        "dc": SPI_DISPLAY_DC,
+        "rst": SPI_DISPLAY_RST,
+        "rotate": 1,
+        "bgr": True,
+        "h_offset": 0,
+        "v_offset": 0,
+        "port": 0,
+        "device": 0,
+        "bus_speed_hz": 1_000_000,
+    },
+    {
+        "driver": "st7735",
+        "width": 160,
+        "height": 128,
+        "dc": SPI_DISPLAY_DC,
+        "rst": -1,  # reset hard-wired on some breakouts
+        "rotate": 1,
+        "bgr": True,
+        "h_offset": 0,
+        "v_offset": 0,
+        "port": 0,
+        "device": 0,
+        "bus_speed_hz": 1_000_000,
+    },
+    {
+        "driver": "st7735",
+        "width": 128,
+        "height": 128,
+        "dc": SPI_DISPLAY_DC,
+        "rst": -1,
+        "rotate": 0,
+        "bgr": False,
+        "h_offset": 0,
+        "v_offset": 0,
+        "port": 0,
+        "device": 0,
+        "bus_speed_hz": 1_000_000,
+    },
+    {
+        "driver": "st7735",
+        "width": 128,
+        "height": 128,
+        "dc": SPI_DISPLAY_DC,
+        "rst": SPI_DISPLAY_RST,
+        "rotate": 0,
+        "bgr": False,
+        "h_offset": 0,
+        "v_offset": 0,
+        "port": 0,
+        "device": 1,  # CE1
+        "bus_speed_hz": 1_000_000,
+    },
+    {
+        "driver": "st7735",
+        "width": 160,
+        "height": 128,
+        "dc": SPI_DISPLAY_DC,
+        "rst": -1,
+        "rotate": 1,
+        "bgr": True,
+        "h_offset": 0,
+        "v_offset": 0,
+        "port": 0,
+        "device": 1,
         "bus_speed_hz": 1_000_000,
     },
     {
@@ -102,16 +242,22 @@ def _save_config(cfg: dict[str, Any]) -> None:
 
 
 def _open_spi(cfg: dict[str, Any]) -> Any:
+    if cfg.get("driver") == "adafruit_st7735r":
+        return _open_spi_adafruit(cfg)
+
     from luma.core.interface.serial import spi  # type: ignore[import-not-found]
     from luma.lcd.device import ili9341, st7735, st7789  # type: ignore[import-not-found]
 
-    serial = spi(
-        port=int(cfg.get("port", 0)),
-        device=int(cfg.get("device", 0)),
-        gpio_DC=int(cfg["dc"]),
-        gpio_RST=int(cfg["rst"]),
-        bus_speed_hz=int(cfg.get("bus_speed_hz", 1_000_000)),
-    )
+    spi_kwargs: dict[str, Any] = {
+        "port": int(cfg.get("port", 0)),
+        "device": int(cfg.get("device", 0)),
+        "gpio_DC": int(cfg["dc"]),
+        "bus_speed_hz": int(cfg.get("bus_speed_hz", 1_000_000)),
+    }
+    rst = int(cfg.get("rst", -1))
+    if rst >= 0:
+        spi_kwargs["gpio_RST"] = rst
+    serial = spi(**spi_kwargs)
     driver = cfg["driver"]
     w, h = int(cfg["width"]), int(cfg["height"])
     rotate = int(cfg.get("rotate", 0))
@@ -134,6 +280,61 @@ def _open_spi(cfg: dict[str, Any]) -> Any:
             framebuffer=full_frame(),
         )
     raise ValueError(f"unknown spi driver {driver}")
+
+
+class _AdafruitST7735:
+    def __init__(self, cfg: dict[str, Any]) -> None:
+        import board  # type: ignore[import-not-found]
+        import digitalio  # type: ignore[import-not-found]
+        from adafruit_rgb_display import st7735 as adafruit_st7735  # type: ignore[import-not-found]
+
+        def _pin(bcm: int):
+            attr = f"D{bcm}"
+            if not hasattr(board, attr):
+                raise ValueError(f"board pin {attr} not available")
+            return getattr(board, attr)
+
+        req_w = int(cfg["width"])
+        req_h = int(cfg["height"])
+
+        spi = board.SPI()
+        cs_name = "CE0" if int(cfg.get("device", 0)) == 0 else "CE1"
+        cs = digitalio.DigitalInOut(getattr(board, cs_name))
+        dc = digitalio.DigitalInOut(_pin(int(cfg["dc"])))
+        rst_val = int(cfg.get("rst", -1))
+        rst = digitalio.DigitalInOut(_pin(rst_val)) if rst_val >= 0 else None
+
+        self._rotation = int(cfg.get("rotate", 0))
+        self._disp = adafruit_st7735.ST7735R(
+            spi,
+            cs=cs,
+            dc=dc,
+            rst=rst,
+            baudrate=int(cfg.get("bus_speed_hz", 8_000_000)),
+            width=req_w,
+            height=req_h,
+            rotation=0,
+            x_offset=int(cfg.get("x_offset", 0)),
+            y_offset=int(cfg.get("y_offset", 0)),
+        )
+        self.width = req_w
+        self.height = req_h
+
+    def display(self, image) -> None:
+        target = image.convert("RGB").resize((self.width, self.height))
+        if self._rotation in (90, 180, 270):
+            target = target.rotate(self._rotation, expand=True)
+            target = target.resize((self.width, self.height))
+        self._disp.image(target, rotation=0)
+
+    def clear(self) -> None:
+        from PIL import Image
+
+        self.display(Image.new("RGB", (self.width, self.height), (0, 0, 0)))
+
+
+def _open_spi_adafruit(cfg: dict[str, Any]) -> Any:
+    return _AdafruitST7735(cfg)
 
 
 def _open_i2c(cfg: dict[str, Any]) -> Any:
@@ -285,6 +486,11 @@ def _close_device(device: Any) -> None:
             iface.cleanup()
     except Exception:
         pass
+    try:
+        if hasattr(device, "_disp") and hasattr(device._disp, "cleanup"):
+            device._disp.cleanup()
+    except Exception:
+        pass
 
 
 def _test_device(device: Any, cfg: dict[str, Any]) -> None:
@@ -309,6 +515,7 @@ class Display:
         self._dry_run = dry_run
         self._last_show = 0.0
         self._blanked = False
+        self._last_crc: int | None = None
         self.width = OLED_WIDTH
         self.height = OLED_HEIGHT
 
@@ -375,8 +582,6 @@ class Display:
         return Image.new("1", (self.width, self.height), 0)
 
     def show(self, image) -> None:
-        self._last_show = time.time()
-        self._blanked = False
         if self._device is None:
             if self._dry_run:
                 log.debug("display frame (dry-run) %dx%d", self.width, self.height)
@@ -388,8 +593,15 @@ class Display:
             from PIL import Image
 
             out = image.resize((self.width, self.height))
+        crc = zlib.crc32(out.tobytes())
+        if self._last_crc == crc:
+            # Skip redundant SPI writes: reduces tearing/flicker and CPU usage.
+            return
+        self._last_show = time.time()
+        self._blanked = False
         with _DISPLAY_LOCK:
             self._device.display(out)
+        self._last_crc = crc
 
     def auto_blank_tick(self) -> None:
         if self._blanked or self._device is None:
@@ -405,6 +617,7 @@ class Display:
         if self._device is not None:
             self._device.clear()
         self._blanked = True
+        self._last_crc = None
 
 
 # Backwards compatibility
