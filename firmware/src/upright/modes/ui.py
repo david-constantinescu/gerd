@@ -7,14 +7,13 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 
 from . import menu as menu_mod
-
-_SETTINGS_ITEMS = menu_mod.SETTINGS_ITEMS
 from . import ui_theme as theme
 from .states import State
 
 _SYMPTOM_TYPES = menu_mod.SYMPTOM_TYPES
 _SYMPTOM_SEVERITIES = menu_mod.SYMPTOM_SEVERITIES
 _MAIN_ITEMS = menu_mod.MAIN_ITEMS
+_SETTINGS_ITEMS = menu_mod.SETTINGS_ITEMS
 
 
 def _wh(ctx: dict) -> tuple[int, int]:
@@ -49,68 +48,95 @@ def _draw_battery(d: ImageDraw.ImageDraw, ctx: dict, w: int) -> None:
     )
 
 
+def _watch_info_lines(ctx: dict) -> list[str]:
+    """Compact status lines for the home / post-meal watch (max ~6)."""
+    lines: list[str] = []
+    last_meal = ctx.get("last_meal_text", "—")
+    if last_meal != "—":
+        lines.append(f"Meal {last_meal}")
+
+    last_food = ctx.get("last_food_name", "—")
+    if last_food and last_food != "—":
+        risk = ctx.get("last_food_risk", "")
+        food = f"Food {last_food[:12]}"
+        if risk:
+            food += f" {risk}"
+        lines.append(food)
+        score = int(ctx.get("last_food_score", 0) or 0)
+        hours = float(ctx.get("food_upright_hours", 0) or 0)
+        if score > 0:
+            lines.append(f"Reflux {score}/100")
+        if hours > 0:
+            lines.append(f"Stay up {hours:.1f}h")
+
+    med = ctx.get("med_line", "")
+    if med:
+        lines.append(med[:24])
+
+    symptom = ctx.get("last_symptom_text", "")
+    if symptom:
+        lines.append(f"Symptom {symptom[:18]}")
+
+    bpm = ctx.get("bpm", "--")
+    if bpm != "--":
+        rmssd = ctx.get("rmssd_text", "--")
+        hrv = f"HR {bpm}"
+        if rmssd != "--":
+            hrv += f"  HRV {rmssd}"
+        lines.append(hrv[:26])
+
+    return lines[:5]
+
+
 def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     now = datetime.now().strftime("%H:%M")
+    date = ctx.get("date_text", "")
+    wear = (ctx.get("wear_side", "left") or "left")[:5]
     bpm = ctx.get("bpm", "--")
-    rmssd = ctx.get("rmssd_text", "--")
     posture = ctx.get("posture_pct", 0.0)
     pitch = ctx.get("pitch", 0.0)
     roll = ctx.get("roll", 0.0)
-    last_meal = ctx.get("last_meal_text", "—")
-    last_food = ctx.get("last_food_name", "—")
-    food_risk = ctx.get("last_food_risk", "")
-    food_score = int(ctx.get("last_food_score", 0) or 0)
     alert = ctx.get("alert_active", False)
     level = ctx.get("level", 0)
     status = _posture_status(posture, alert)
     bar_w = max(40, w - 52)
 
     if alert:
-        d.text((4, 4), f"{now}  {status}", fill=theme._C_WARN)
+        d.text((4, 4), f"{now} {status}", fill=theme._C_WARN)
         _draw_battery(d, ctx, w)
-        theme.hr(d, 18, w)
-        d.text((4, 22), "Uprightness", fill=theme._C_DIM)
-        theme.progress_bar(d, 4, 34, bar_w, 8, posture / 100.0)
-        d.text((w - 40, 32), f"{int(posture)}%", fill=theme._C_FG)
-        d.text((4, 46), f"Pitch {pitch:+.1f}°", fill=theme._C_FG)
-        d.text((4, 58), "Straighten up!", fill=theme._C_WARN)
-        if bpm != "--":
-            d.text((4, 72), f"HR {bpm} bpm", fill=theme._C_DIM)
-        theme.progress_bar(d, 4, 88, bar_w, 6, level / 3.0)
-        d.text((w - 36, 86), "alert", fill=theme._C_DIM)
+        theme.hr(d, 17, w)
+        d.text((4, 21), "Uprightness", fill=theme._C_DIM)
+        theme.progress_bar(d, 4, 32, bar_w, 7, posture / 100.0)
+        d.text((w - 36, 30), f"{int(posture)}%", fill=theme._C_FG)
+        d.text((4, 42), f"P {pitch:+.0f}° R {roll:+.0f}°", fill=theme._C_FG)
+        d.text((4, 54), "Straighten up!", fill=theme._C_WARN)
+        y = 66
+        for line in _watch_info_lines(ctx)[:2]:
+            d.text((4, y), line, fill=theme._C_DIM)
+            y += 11
+        theme.progress_bar(d, 4, h - 14, bar_w, 5, level / 3.0)
         return
 
     d.text((4, 4), now, fill=theme._C_FG)
     d.text((50, 4), status, fill=theme._C_ACCENT)
     _draw_battery(d, ctx, w)
-    theme.hr(d, 18, w)
+    d.text((4, 16), f"{date}  {wear} side", fill=theme._C_DIM)
 
-    d.text((4, 22), "Uprightness", fill=theme._C_DIM)
-    theme.progress_bar(d, 4, 34, bar_w, 8, posture / 100.0)
-    d.text((w - 40, 32), f"{int(posture)}%", fill=theme._C_FG)
+    theme.hr(d, 28, w)
 
-    d.text((4, 46), f"Pitch {pitch:+.1f}°", fill=theme._C_FG)
-    d.text((max(72, w // 2), 46), f"Roll {roll:+.1f}°", fill=theme._C_FG)
+    d.text((4, 32), "Uprightness", fill=theme._C_DIM)
+    theme.progress_bar(d, 4, 42, bar_w, 7, posture / 100.0)
+    d.text((w - 36, 40), f"{int(posture)}%", fill=theme._C_FG)
 
-    d.text((4, 58), f"Last meal {last_meal}", fill=theme._C_FG)
+    d.text((4, 52), f"P {pitch:+.0f}°  R {roll:+.0f}°", fill=theme._C_FG)
 
-    y = 70
-    if last_food and last_food != "—":
-        line = f"Food {last_food[:14]}"
-        if food_risk:
-            line += f"  {food_risk}"
-        d.text((4, y), line, fill=theme._C_FG)
-        y += 12
-        if food_score > 0:
-            d.text((4, y), f"Reflux score {food_score}/100", fill=theme._C_DIM)
-            y += 12
-
-    if bpm != "--":
-        hrv = f"HR {bpm} bpm"
-        if rmssd != "--":
-            hrv += f"  HRV {rmssd}ms"
-        d.text((4, y), hrv[:26], fill=theme._C_DIM)
+    y = 64
+    for line in _watch_info_lines(ctx):
+        if y > h - 12:
+            break
+        d.text((4, y), line, fill=theme._C_FG if y == 64 else theme._C_DIM)
+        y += 11
 
 
 def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -119,17 +145,28 @@ def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     posture = ctx.get("posture_pct", 0.0)
     remaining = ctx.get("remaining", "0:00")
     frac = ctx.get("progress", 0.0)
-    meal_at = ctx.get("meal_at_text", "-")
+    meal_at = ctx.get("meal_at_text", "—")
+    pitch = ctx.get("pitch", 0.0)
 
-    d.text((4, 4), f"{now}  POST-MEAL", fill=theme._C_ACCENT)
+    d.text((4, 4), f"{now} POST-MEAL", fill=theme._C_ACCENT)
     _draw_battery(d, ctx, w)
-    theme.hr(d, 20, w)
-    d.text((4, 26), "Posture score", fill=theme._C_FG)
-    theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
-    d.text((4, 56), f"Stay up {remaining}", fill=theme._C_FG)
-    theme.progress_bar(d, 4, 72, max(40, w - 8), 10, frac)
-    d.text((4, 90), f"Meal at {meal_at}", fill=theme._C_DIM)
-    d.text((max(4, w - 48), 40), f"{int(posture)}%", fill=theme._C_FG)
+    theme.hr(d, 18, w)
+
+    d.text((4, 22), "Upright timer left", fill=theme._C_DIM)
+    d.text((4, 34), remaining, fill=theme._C_FG)
+    theme.progress_bar(d, 4, 48, max(40, w - 8), 7, min(1.0, frac))
+
+    d.text((4, 60), "Uprightness", fill=theme._C_DIM)
+    theme.progress_bar(d, 4, 70, max(40, w - 44), 6, posture / 100.0)
+    d.text((w - 36, 68), f"{int(posture)}%", fill=theme._C_FG)
+    d.text((4, 80), f"Pitch {pitch:+.0f}°  ate {meal_at}", fill=theme._C_DIM)
+
+    y = 92
+    for line in _watch_info_lines(ctx)[:2]:
+        if y > h - 10:
+            break
+        d.text((4, y), line, fill=theme._C_DIM)
+        y += 11
 
 
 def draw_main_menu(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -292,7 +329,10 @@ def draw_settings(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         prefix = "> " if i == idx else "  "
         theme.menu_row(d, y, f"{prefix}{label}", w=w, selected=(i == idx))
         y += 18
-    d.text((4, min(h - 14, y + 4)), "More on phone", fill=theme._C_DIM)
+    ssid = ctx.get("hotspot_ssid", "UpRight-AP")
+    ip = ctx.get("hotspot_ip", "192.168.1.1")
+    d.text((4, min(h - 26, y + 2)), f"WiFi {ssid}", fill=theme._C_DIM)
+    d.text((4, min(h - 14, y + 14)), ip, fill=theme._C_ACCENT)
 
 
 def draw_about(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -365,7 +405,7 @@ _MENU_DRAWERS = {
     "main": draw_main_menu,
     "meal_confirm": draw_meal_confirm,
     "food_photo": draw_food_photo_prompt,
-    "food_preview": None,  # handled in render()
+    "food_preview": None,
     "food_analysing": draw_food_analysing,
     "food_result": draw_food_result,
     "meal_saved": draw_meal_saved,
