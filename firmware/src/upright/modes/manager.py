@@ -271,7 +271,18 @@ class ModeManager:
                 self._on_b_short(now)
         self._paint_now()
 
+    def _dismiss_med_prompt(self) -> None:
+        name = self.menu.pending_med
+        if name:
+            self.meds.dismiss(name)
+        self.menu.pending_med = ""
+        self.menu.pending_med_brand = ""
+        self.menu.pending_med_dose = ""
+        self.menu.close()
+
     def _on_a_short(self, now: float) -> None:
+        if self.menu.open and self.menu.screen == "med_prompt":
+            return
         if self.menu.open and self.menu.screen != "flash":
             self.menu.next_item()
             return
@@ -279,17 +290,21 @@ class ModeManager:
             self._transition(State.IDLE)
 
     def _on_a_double(self, now: float) -> None:
+        if self.menu.open and self.menu.screen == "med_prompt":
+            self._dismiss_med_prompt()
+            return
         if self.menu.open:
-            if self.menu.screen == "main":
-                self.menu.close()
-            else:
-                self._menu_back()
+            # Top double-tap always returns to the watch face.
+            self.menu.close()
             return
         if self.ctx.state == State.CALIBRATING:
             self._transition(State.IDLE)
             self.menu.close()
 
     def _on_b_short(self, now: float) -> None:
+        if self.menu.open and self.menu.screen == "med_prompt":
+            self._menu_select(now)
+            return
         if not self.menu.open:
             return
         self._menu_select(now)
@@ -326,6 +341,9 @@ class ModeManager:
             self._menu_action(action, now)
 
     def _menu_back(self) -> None:
+        if self.menu.screen == "med_prompt":
+            self._dismiss_med_prompt()
+            return
         parent = {
             "meal_confirm": "main",
             "food_photo": "meal_confirm",
@@ -390,6 +408,7 @@ class ModeManager:
             try:
                 demo_seed.enter_demo(self.db)
                 self._demo_anim_start = time.time()
+                self.meds._refresh_schedule()
                 reload_tunables()
                 self.menu.flash("Demo week loaded", now, seconds=2.0)
             except OSError as e:
@@ -480,6 +499,10 @@ class ModeManager:
         self.menu.open = True
         self.menu.screen = "med_prompt"
         self.menu.pending_med = name
+        self.menu.pending_med_brand = str(
+            ev.payload.get("brand", name)
+        )
+        self.menu.pending_med_dose = str(ev.payload.get("dose", ""))
         self.menu.pending_med_time = datetime.now().strftime("%H:%M")
         self.menu.index = 0
         self.menu.touch(time.time())
@@ -572,6 +595,7 @@ class ModeManager:
             elif kind == "cmd_demo_enter":
                 demo_seed.enter_demo(self.db)
                 self._demo_anim_start = time.time()
+                self.meds._refresh_schedule()
                 reload_tunables()
             elif kind == "cmd_demo_exit":
                 demo_seed.exit_demo(self.db)

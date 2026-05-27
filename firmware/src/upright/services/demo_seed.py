@@ -17,6 +17,7 @@ from .logger import Logger
 log = logging.getLogger("services.demo_seed")
 
 DEMO_WEEK_PATH = DATA_DIR / "demo_week.json"
+DEMO_SESSION_PATH = DATA_DIR / "demo_session.json"
 DB_BACKUP_PATH = DATA_DIR / "upright.db.bak"
 
 
@@ -43,6 +44,57 @@ def set_demo_mode(enabled: bool) -> None:
     reload_tunables()
 
 
+def get_demo_session_start() -> float | None:
+    if not DEMO_SESSION_PATH.exists():
+        return None
+    try:
+        data = json.loads(DEMO_SESSION_PATH.read_text())
+        return float(data.get("started_at", 0)) or None
+    except (json.JSONDecodeError, OSError, TypeError, ValueError):
+        return None
+
+
+def _write_demo_session(started_at: float | None = None) -> float:
+    ts = started_at if started_at is not None else time.time()
+    DEMO_SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DEMO_SESSION_PATH.write_text(
+        json.dumps({"started_at": ts, "boot_count": int(time.time())})
+    )
+    return ts
+
+
+def demo_reminder_plan() -> list[dict[str, Any]]:
+    data = _load_dataset()
+    plan = data.get("demo_reminders")
+    if plan:
+        return plan
+    return [
+        {"name": "Omeprazole", "minutes_after_boot": 2},
+        {"name": "Famotidine", "minutes_after_boot": 8},
+    ]
+
+
+def demo_med_details(name: str) -> dict[str, str]:
+    """Lookup brand + dose for a medication name from the demo dataset."""
+    for med in _load_dataset().get("medications", []):
+        if med.get("name") == name:
+            return {
+                "name": str(med.get("name", name)),
+                "brand": str(med.get("brand", med.get("name", name))),
+                "dose": str(med.get("dose", "")),
+            }
+    return {"name": name, "brand": name, "dose": ""}
+
+
+def restart_demo_on_boot(db: Logger) -> None:
+    """Fresh synthetic timeline every boot while demo_mode is enabled."""
+    log.info("demo mode boot — reseeding synthetic week")
+    _clear_user_tables(db)
+    _seed_from_json(db, _load_dataset())
+    _write_demo_session()
+    db.flush()
+
+
 def enter_demo(db: Logger) -> None:
     """Back up live DB, clear user tables, seed synthetic week."""
     db.flush()
@@ -51,6 +103,7 @@ def enter_demo(db: Logger) -> None:
         log.info("backed up database to %s", DB_BACKUP_PATH)
     _clear_user_tables(db)
     _seed_from_json(db, _load_dataset())
+    _write_demo_session()
     set_demo_mode(True)
     log.info("demo mode enabled — synthetic week loaded")
 
@@ -59,6 +112,7 @@ def exit_demo(db: Logger) -> None:
     """Restore pre-demo database if a backup exists."""
     db.flush()
     set_demo_mode(False)
+    DEMO_SESSION_PATH.unlink(missing_ok=True)
     if DB_BACKUP_PATH.exists():
         shutil.copy2(DB_BACKUP_PATH, DB_PATH)
         DB_BACKUP_PATH.unlink(missing_ok=True)
@@ -120,7 +174,6 @@ def _seed_from_json(db: Logger, data: dict[str, Any]) -> None:
                 "INSERT INTO events(ts, kind, payload) VALUES (?, ?, ?)",
                 (ts, ev["kind"], json.dumps(ev.get("payload") or {})),
             )
-        # Sparse posture samples (every ~4h) for charts
         for hours_ago in range(0, 168, 4):
             ts = now - hours_ago * 3600
             pitch = 6.0 if hours_ago % 8 == 0 else -4.0

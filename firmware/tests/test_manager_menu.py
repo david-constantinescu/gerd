@@ -143,6 +143,23 @@ def test_med_prompt_ack(mgr: ModeManager) -> None:
     assert mgr.menu.screen == "med_ack"
 
 
+def test_double_a_closes_menu_from_subscreen(mgr: ModeManager) -> None:
+    mgr.menu.open = True
+    mgr.menu.screen = "settings"
+    mgr._on_a_double(time.time())
+    assert not mgr.menu.open
+
+
+def test_double_a_dismisses_med_prompt(mgr: ModeManager) -> None:
+    mgr.menu.open = True
+    mgr.menu.screen = "med_prompt"
+    mgr.menu.pending_med = "Omeprazole"
+    mgr.menu.pending_med_brand = "Prilosec"
+    mgr._on_a_double(time.time())
+    assert not mgr.menu.open
+    assert mgr.menu.pending_med == ""
+
+
 def test_menu_state_actions_match_screens() -> None:
     m = MenuState()
     m.open_main(0.0)

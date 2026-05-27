@@ -18,6 +18,7 @@ from .config import reload_tunables
 from .events import Event, EventBus, EventType
 from .modes.manager import ModeManager
 from .services import alerts as alerts_service
+from .services import demo_seed
 from .services import logger as logger_service
 from .services import meds as meds_service
 from .services import sleep as sleep_service
@@ -74,6 +75,8 @@ def main(argv: list[str] | None = None) -> int:
 
     bus = EventBus()
     db = logger_service.Logger()
+    if tunables.demo_mode:
+        demo_seed.restart_demo_on_boot(db)
     db.boot_session()
 
     alerts = alerts_service.AlertManager(bus)

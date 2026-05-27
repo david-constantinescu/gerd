@@ -58,6 +58,8 @@ class MenuState:
     symptom_severity: int = 0
     symptom_type: int = 0
     pending_med: str = ""
+    pending_med_brand: str = ""
+    pending_med_dose: str = ""
     pending_med_time: str = ""
     flash_until: float = 0.0
     flash_message: str = ""
@@ -79,6 +81,10 @@ class MenuState:
         self.food_skip = False
         self.symptom_severity = 0
         self.symptom_type = 0
+        self.pending_med = ""
+        self.pending_med_brand = ""
+        self.pending_med_dose = ""
+        self.pending_med_time = ""
 
     def open_main(self, now: float) -> None:
         self.open = True
@@ -155,6 +161,8 @@ class MenuState:
             "menu_index": self.index,
             "menu_confirm_yes": self.confirm_yes,
             "menu_pending_med": self.pending_med,
+            "menu_pending_med_brand": self.pending_med_brand,
+            "menu_pending_med_dose": self.pending_med_dose,
             "menu_pending_med_time": self.pending_med_time,
             "menu_flash": self.flash_message if self.screen == "flash" else "",
             "menu_symptom_severity": self.symptom_severity,

@@ -4,6 +4,8 @@ Reminders are stored in the SQLite ``medications`` table (CRUD via the
 webapp). The FSM polls :meth:`MedReminders.tick` every loop iteration; due
 reminders fire as ``MED_REMINDER`` events. If the user doesn't acknowledge
 within 5 minutes the reminder fires again.
+
+In demo mode, reminders fire on a schedule relative to demo session boot time.
 """
 
 from __future__ import annotations
@@ -12,7 +14,9 @@ import logging
 import time
 from datetime import datetime, timedelta
 
+from ..config import TUNABLES
 from ..events import Event, EventBus, EventType
+from . import demo_seed
 from .logger import Logger
 
 log = logging.getLogger("services.meds")
@@ -24,13 +28,18 @@ class MedReminders:
     def __init__(self, bus: EventBus, db: Logger) -> None:
         self.bus = bus
         self.db = db
-        # name -> next-fire datetime
         self._next: dict[str, datetime] = {}
         self._pending: dict[str, datetime] = {}
+        self._demo_fired: set[str] = set()
         self._refresh_schedule()
 
     def _refresh_schedule(self) -> None:
-        with self.db._lock:  # noqa: SLF001 — internal helper
+        self._next.clear()
+        if demo_seed.is_demo_mode():
+            self._apply_demo_schedule()
+            return
+        self._demo_fired.clear()
+        with self.db._lock:  # noqa: SLF001
             rows = self.db._conn.execute(
                 "SELECT id, name, time FROM medications WHERE enabled=1"
             ).fetchall()
@@ -44,8 +53,47 @@ class MedReminders:
                 hour=hh, minute=mm
             )
 
+    def _apply_demo_schedule(self) -> None:
+        start = demo_seed.get_demo_session_start() or time.time()
+        base = datetime.fromtimestamp(start)
+        for item in demo_seed.demo_reminder_plan():
+            name = str(item.get("name", ""))
+            if not name:
+                continue
+            minutes = float(item.get("minutes_after_boot", 2))
+            self._next[name] = base + timedelta(minutes=minutes)
+        self._demo_fired.clear()
+        log.info(
+            "demo med schedule from boot: %s",
+            ", ".join(f"{n}@{self._next[n].strftime('%H:%M')}" for n in self._next),
+        )
+
+    def _lookup_med(self, name: str) -> tuple[str, str, str]:
+        with self.db._lock:  # noqa: SLF001
+            row = self.db._conn.execute(
+                "SELECT name, dose FROM medications WHERE name=?", (name,)
+            ).fetchone()
+        if row:
+            details = demo_seed.demo_med_details(name) if demo_seed.is_demo_mode() else {}
+            brand = details.get("brand", row[0])
+            return row[0], brand, row[1] or ""
+        return name, name, ""
+
     def tick(self) -> None:
         now = datetime.now()
+        if demo_seed.is_demo_mode():
+            for name, when in list(self._next.items()):
+                if name in self._demo_fired:
+                    continue
+                if now >= when:
+                    self._fire(name)
+                    self._demo_fired.add(name)
+            for name, when in list(self._pending.items()):
+                if now - when >= REPEAT_AFTER:
+                    self._fire(name)
+                    self._pending[name] = now
+            return
+
         for name, when in list(self._next.items()):
             if now >= when:
                 self._fire(name)
@@ -58,16 +106,32 @@ class MedReminders:
     def _fire(self, name: str) -> None:
         log.info("med reminder: %s", name)
         self._pending[name] = datetime.now()
-        self.bus.publish(Event(EventType.MED_REMINDER, payload={"name": name}))
+        med_name, brand, dose = self._lookup_med(name)
+        payload = {
+            "name": med_name,
+            "brand": brand,
+            "dose": dose,
+            "demo": demo_seed.is_demo_mode(),
+        }
+        self.bus.publish(Event(EventType.MED_REMINDER, payload=payload))
 
     def acknowledge(self, name: str) -> None:
         self._pending.pop(name, None)
-        self.db.event("med_acknowledged", {"name": name, "ts": time.time()})
+        self.db.event_now("med_acknowledged", {"name": name, "ts": time.time()})
+
+    def dismiss(self, name: str) -> None:
+        """Close reminder without logging taken."""
+        self._pending.pop(name, None)
 
     def status_line(self) -> str:
-        """One-line med summary for the watch face."""
         if self._pending:
             name = next(iter(self._pending))
+            if demo_seed.is_demo_mode():
+                _n, brand, dose = self._lookup_med(name)
+                line = f"Med: {brand}"
+                if dose:
+                    line += f" {dose}"
+                return line[:24]
             return f"Med due: {name[:14]}"
         now = datetime.now()
         future = [(when, name) for name, when in self._next.items() if when > now]

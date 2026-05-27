@@ -38,19 +38,23 @@ def _draw_demo_badge(d: ImageDraw.ImageDraw, w: int) -> None:
 
 def _draw_score_bar(
     d: ImageDraw.ImageDraw,
-    x: int,
     y: int,
-    bar_w: int,
+    w: int,
     pct: float,
     *,
     bar_h: int = 7,
 ) -> None:
+    """Score label, inline bar, and % on one row."""
     pct = max(0.0, min(100.0, float(pct)))
-    d.text((x, y), "Score", fill=theme._C_DIM)
-    bar_y = y + 10
-    theme.progress_bar(d, x, bar_y, bar_w, bar_h, pct / 100.0)
-    label = f"{int(pct)}%"
-    d.text((x + bar_w - 26, bar_y - 1), label, fill=theme._C_FG)
+    row_y = y
+    d.text((4, row_y), "Score", fill=theme._C_DIM)
+    pct_str = f"{int(pct)}%"
+    pct_w = 28
+    pct_x = w - 4 - pct_w
+    bar_x = 38
+    bar_w = max(12, pct_x - bar_x - 4)
+    theme.progress_bar(d, bar_x, row_y + 1, bar_w, bar_h, pct / 100.0)
+    d.text((pct_x, row_y), pct_str, fill=theme._C_FG)
 
 
 def _draw_battery(d: ImageDraw.ImageDraw, ctx: dict, w: int) -> None:
@@ -129,7 +133,7 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         d.text((4, 4), f"{now} {status}", fill=theme._C_WARN)
         _draw_battery(d, ctx, w)
         theme.hr(d, 17, w)
-        _draw_score_bar(d, 4, 21, bar_w, posture)
+        _draw_score_bar(d, 21, w, posture)
         d.text((4, 42), f"P {pitch:+.0f}° R {roll:+.0f}°", fill=theme._C_FG)
         d.text((4, 54), "Straighten up!", fill=theme._C_WARN)
         y = 66
@@ -151,11 +155,11 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
     theme.hr(d, 28, w)
 
-    _draw_score_bar(d, 4, 32, bar_w, posture)
+    _draw_score_bar(d, 32, w, posture)
 
-    d.text((4, 52), f"P {pitch:+.0f}°  R {roll:+.0f}°", fill=theme._C_FG)
+    d.text((4, 46), f"P {pitch:+.0f}°  R {roll:+.0f}°", fill=theme._C_FG)
 
-    y = 64
+    y = 58
     for line in _watch_info_lines(ctx):
         if y > h - 12:
             break
@@ -180,7 +184,7 @@ def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, 34), remaining, fill=theme._C_FG)
     theme.progress_bar(d, 4, 48, max(40, w - 8), 7, min(1.0, frac))
 
-    _draw_score_bar(d, 4, 60, max(40, w - 44), posture, bar_h=6)
+    _draw_score_bar(d, 60, w, posture, bar_h=6)
     d.text((4, 80), f"Pitch {pitch:+.0f}°  ate {meal_at}", fill=theme._C_DIM)
 
     y = 92
@@ -320,10 +324,20 @@ def draw_symptom_saved(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 def draw_med_reminder(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     theme.title_bar(d, "MEDICATION", w)
-    name = (ctx.get("menu_pending_med", "Medication") or "")[:18]
     when = ctx.get("menu_pending_med_time", "")
-    d.text((4, 32), name, fill=theme._C_FG)
-    d.text((4, 48), f"Due: {when}", fill=theme._C_DIM)
+    demo = bool(ctx.get("demo_mode"))
+    brand = (ctx.get("menu_pending_med_brand", "") or "")[:18]
+    dose = (ctx.get("menu_pending_med_dose", "") or "")[:16]
+    name = (ctx.get("menu_pending_med", "Medication") or "")[:18]
+    if demo and brand:
+        d.text((4, 28), brand, fill=theme._C_FG)
+        if dose:
+            d.text((4, 42), dose, fill=theme._C_ACCENT)
+        d.text((4, 56), f"Due {when}", fill=theme._C_DIM)
+        d.text((4, 70), "dbl top: dismiss", fill=theme._C_DIM)
+    else:
+        d.text((4, 32), name, fill=theme._C_FG)
+        d.text((4, 48), f"Due: {when}", fill=theme._C_DIM)
 
 
 def draw_med_ack(d: ImageDraw.ImageDraw, ctx: dict) -> None:
