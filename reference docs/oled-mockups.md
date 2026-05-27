@@ -6,10 +6,10 @@ Source: `oled menus.pdf`. The on-device TFT renders this layout scaled to **160�
 
 | Button | GPIO | Default |
 |--------|------|---------|
-| **Top** | 20 | **Tap:** next option down · **Double-tap:** back / close submenu |
-| **Bottom** | 21 | **Tap:** select highlighted option · **Double-tap:** open highlighted branch (from main menu) or open main menu from watch |
+| **Top** | 20 | **Tap:** next option (wraps to top) · **Double-tap:** back / dismiss |
+| **Bottom** | 21 | **Tap:** confirm highlighted · **Double-tap:** log symptom |
 
-Non-default actions show on-screen as `top:` / `bottom:` hints only when needed (e.g. food photo: `bottom: capture`).
+Control legend is shown on the **main menu** only; other screens have no button hints.
 
 No rotary encoder is connected.
 
@@ -26,7 +26,7 @@ No rotary encoder is connected.
 └────────────────────────────┘
 ```
 
-## Main menu (bottom double-tap from watch)
+## Main menu (top tap from watch, or navigate from another screen)
 
 ```
 ┌────────────────────────────┐
@@ -41,14 +41,14 @@ No rotary encoder is connected.
 └────────────────────────────┘
 ```
 
-**In menu:** top tap = next · top double = back · bottom tap = select · bottom double = open highlighted item.
+**In menu:** top tap = next · top double = back · bottom tap = select · bottom double = log symptom.
 
 ## Quick reference
 
 | Screen | Top tap | Top double | Bottom tap | Bottom double |
 |--------|---------|------------|------------|---------------|
-| Watch | — | — | — | Open main menu |
-| Main menu | Next | Close / back | Select | Open branch |
+| Watch | Open main menu | — | — | Log symptom |
+| Main menu | Next | Close / back | Select | Log symptom |
 | Lists / yes-no | Next | Back | Select | — |
 | Food photo | Next | Back | Select (capture) | Capture |
 | Calibrate | — | Exit | — | Capture step |

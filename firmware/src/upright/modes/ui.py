@@ -206,7 +206,7 @@ def draw_main_menu(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         y += 18
         if y > h - 24:
             break
-    theme.footer_hint(d, "dbl top: back  dbl bottom: open", h)
+    theme.footer_hint(d, "top:next top2:back bot:ok bot2:symptom", h)
 
 
 def draw_meal_confirm(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -226,8 +226,6 @@ def draw_food_photo_prompt(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     idx = int(ctx.get("menu_index", 0))
     theme.menu_row(d, 56, "> Capture", w=w, selected=(idx == 0))
     theme.menu_row(d, 76, "  Skip photo", w=w, selected=(idx == 1))
-    theme.footer_hint(d, "dbl bottom: capture", h)
-
 
 def draw_food_analysing(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
@@ -335,7 +333,6 @@ def draw_med_reminder(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         if dose:
             d.text((4, 42), dose, fill=theme._C_ACCENT)
         d.text((4, 56), f"Due {when}", fill=theme._C_DIM)
-        d.text((4, 70), "dbl top: dismiss", fill=theme._C_DIM)
     else:
         d.text((4, 32), name, fill=theme._C_FG)
         d.text((4, 48), f"Due: {when}", fill=theme._C_DIM)
@@ -407,8 +404,6 @@ def draw_calibrating(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     step = (ctx.get("step", "Stand upright") or "")[:22]
     d.text((4, 32), step, fill=theme._C_FG)
     d.text((4, 48), "Hold still", fill=theme._C_DIM)
-    theme.footer_hint(d, "dbl bottom: capture", h)
-
 
 def draw_booting(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)

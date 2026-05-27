@@ -331,8 +331,17 @@ class ModeManager:
         if self.menu.open and self.menu.screen != "flash":
             self.menu.next_item()
             return
+        if not self.menu.open and self.ctx.state in (State.IDLE, State.POST_MEAL):
+            self.menu.open_main(now)
+            return
         if self.ctx.state == State.CALIBRATING:
             self._transition(State.IDLE)
+
+    def _open_symptom_log(self, now: float) -> None:
+        self.menu.open = True
+        self.menu.screen = "symptom_severity"
+        self.menu.index = 0
+        self.menu.touch(now)
 
     def _on_a_double(self, now: float) -> None:
         """Top double-tap: back / dismiss (watch ← main ← submenu)."""
@@ -349,11 +358,6 @@ class ModeManager:
             self._transition(State.IDLE)
             self.menu.close()
 
-    def _go_menu_home(self) -> None:
-        self.menu.open = True
-        self.menu.screen = "main"
-        self.menu.index = 0
-
     def _on_b_short(self, now: float) -> None:
         if self.menu.open and self.menu.screen == "med_prompt":
             self._menu_select(now)
@@ -363,7 +367,9 @@ class ModeManager:
         self._menu_select(now)
 
     def _on_b_double(self, now: float) -> None:
-        """Bottom double-tap: open main menu from watch, or enter highlighted row."""
+        """Bottom double-tap: jump to log-symptom flow."""
+        if self.menu.open and self.menu.screen == "med_prompt":
+            return
         if self.ctx.state == State.CALIBRATING:
             self.ctx.calibration_step = min(2, self.ctx.calibration_step + 1)
             if self.ctx.calibration_step >= 2:
@@ -374,17 +380,11 @@ class ModeManager:
         if self.menu.screen == "flash":
             self.menu.close()
             return
-        if not self.menu.open:
-            if self.ctx.state in (State.IDLE, State.POST_MEAL):
-                self.menu.open_main(now)
-            return
-        if self.menu.screen == "main":
+        if self.menu.screen in ("symptom_severity", "symptom_type"):
             self._menu_select(now)
             return
-        if self.menu.screen == "food_photo":
-            self._capture_food(now)
-            return
-        self._go_menu_home()
+        if self.ctx.state in (State.IDLE, State.POST_MEAL) or self.menu.open:
+            self._open_symptom_log(now)
 
     def _menu_select(self, now: float) -> None:
         """Bottom tap — confirm highlighted row (single or double)."""
