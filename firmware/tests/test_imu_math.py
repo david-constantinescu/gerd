@@ -1,6 +1,6 @@
 import math
 
-from sentinel.hal.imu import angles_from_accel
+from upright.hal.imu import angles_from_accel
 
 
 def test_upright_is_zero_pitch():

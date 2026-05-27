@@ -3,7 +3,7 @@
 
 import time
 
-from sentinel.hal.imu import _open_bus, _read_accel, angles_from_accel
+from upright.hal.imu import _open_bus, _read_accel, angles_from_accel
 
 
 def main() -> int:

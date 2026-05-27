@@ -21,7 +21,7 @@ See [`WIRING.md`](WIRING.md) for the exact pinout.
 ## Flashing the Pi
 
 1. Raspberry Pi OS Lite (64-bit, bookworm or later).
-2. In `rpi-imager` advanced options: enable SSH, set hostname `sentinel`,
+2. In `rpi-imager` advanced options: enable SSH, set hostname `upright`,
    preload your home WiFi credentials.
 3. Boot the Pi, SSH in, then:
 
@@ -66,8 +66,8 @@ python3 firmware/scripts/camera_test.py
 Once every script passes, start the full firmware loop:
 
 ```bash
-sudo systemctl restart sentinel sentinel-web
-journalctl -u sentinel -f
+sudo systemctl restart upright upright-web
+journalctl -u upright -f
 ```
 
 ## Power

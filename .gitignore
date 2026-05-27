@@ -16,9 +16,9 @@ dist/
 .mypy_cache/
 
 # Project data
-firmware/data/sentinel.db
-firmware/data/sentinel.db-wal
-firmware/data/sentinel.db-shm
+firmware/data/upright.db
+firmware/data/upright.db-wal
+firmware/data/upright.db-shm
 firmware/data/config.local.json
 *.log
 

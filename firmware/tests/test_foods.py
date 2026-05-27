@@ -1,7 +1,7 @@
 import json
 
-from sentinel import config
-from sentinel.services import foods
+from upright import config
+from upright.services import foods
 
 
 def test_load_real_foods_json():

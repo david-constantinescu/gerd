@@ -1,4 +1,4 @@
-from sentinel.hal.button import classify
+from upright.hal.button import classify
 
 
 def test_single_press():

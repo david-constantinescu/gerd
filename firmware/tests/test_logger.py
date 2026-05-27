@@ -1,6 +1,6 @@
 import json
 
-from sentinel.services.logger import Logger
+from upright.services.logger import Logger
 
 
 def test_events_roundtrip(tmp_path):

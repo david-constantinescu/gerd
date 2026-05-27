@@ -1,4 +1,4 @@
-# Reflux Sentinel
+# UpRight
 
 An offline, waist-worn wearable for people with GERD / acid reflux. Runs on a
 Raspberry Pi Zero 2 W.
@@ -34,7 +34,7 @@ curl -fsSL https://raw.githubusercontent.com/david-constantinescu/gerd/main/inst
 
 This clones the repo, installs every system + Python dependency, enables I²C
 and I²S, sets up the WiFi hotspot, and installs both systemd units
-(`sentinel.service` for the firmware loop, `sentinel-web.service` for the
+(`upright.service` for the firmware loop, `upright-web.service` for the
 Flask PWA).
 
 ## Quick start (development on macOS)
@@ -45,7 +45,7 @@ cd gerd/firmware
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest -q
-python -m sentinel.main --dry-run
+python -m upright.main --dry-run
 ```
 
 The HAL imports its Pi-only libraries lazily (`RPi.GPIO`, `smbus2`,
@@ -56,7 +56,7 @@ unit tests, even though the actual hardware drivers can't run there.
 
 ```
 firmware/         Python package that runs on the Pi
-  src/sentinel/   Source: HAL, FSM, services, web app
+  src/upright/   Source: HAL, FSM, services, web app
   scripts/        Per-sensor bring-up helpers
   systemd/        Service files + hostapd/dnsmasq configs
   tests/          pytest, runs on Mac

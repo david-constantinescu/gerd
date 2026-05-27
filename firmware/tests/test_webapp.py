@@ -1,8 +1,8 @@
 import pytest
 
-from sentinel import config
-from sentinel.services.logger import Logger
-from sentinel.web.app import app
+from upright import config
+from upright.services.logger import Logger
+from upright.web.app import app
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def client(tmp_path, monkeypatch):
 def test_dashboard_page(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert b"Reflux Sentinel" in r.data
+    assert b"UpRight" in r.data
 
 
 def test_live_endpoint(client):

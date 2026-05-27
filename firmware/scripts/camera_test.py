@@ -3,8 +3,8 @@
 
 from PIL import ImageOps
 
-from sentinel.hal.camera import capture_with_warmup
-from sentinel.hal.oled import OLED
+from upright.hal.camera import capture_with_warmup
+from upright.hal.oled import OLED
 
 
 def main() -> int:

@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "reflux-sentinel"
+name = "upright"
 version = "0.1.0"
 description = "Offline GERD wearable firmware + Flask PWA for Raspberry Pi Zero 2 W"
 requires-python = ">=3.10"
@@ -20,7 +20,10 @@ dependencies = [
 pi = [
     "RPi.GPIO>=0.7",
     "smbus2>=0.4",
+    "spidev>=3.6",
     "luma.oled>=3.12",
+    "luma.lcd>=2.11",
+    "luma.core>=2.4",
     "tflite-runtime>=2.14; platform_machine=='aarch64'",
     "watchdog>=4.0",
     "gunicorn>=21.2",
@@ -32,14 +35,14 @@ dev = [
 ]
 
 [project.scripts]
-sentinel = "sentinel.main:main"
-sentinel-web = "sentinel.web.app:run"
+upright = "upright.main:main"
+upright-web = "upright.web.app:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-sentinel = ["web/templates/*.html", "web/static/*"]
+upright = ["web/templates/*.html", "web/static/*"]
 
 [tool.ruff]
 line-length = 100

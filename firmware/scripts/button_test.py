@@ -3,8 +3,8 @@
 
 import time
 
-from sentinel.events import EventBus, EventType
-from sentinel.hal import button
+from upright.events import EventBus, EventType
+from upright.hal import button
 
 
 def main() -> int:

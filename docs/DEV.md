@@ -28,16 +28,16 @@ After reboot, the hotspot is up and both systemd units are running.
 
 ```bash
 # Mac
-vim firmware/src/sentinel/…      # edit
+vim firmware/src/upright/…      # edit
 pytest -q                        # verify
 git add -A && git commit -m '…'
 git push
 
 # Pi (via SSH on your home wifi — see "Dev mode" below)
-cd ~/reflux-sentinel
+cd ~/upright
 git pull
-sudo systemctl restart sentinel sentinel-web
-journalctl -u sentinel -f        # tail logs
+sudo systemctl restart upright upright-web
+journalctl -u upright -f        # tail logs
 ```
 
 ## Dev mode — temporarily leaving the hotspot
@@ -60,7 +60,7 @@ the settings menu) that does this automatically.
 
 ```bash
 cd firmware
-SENTINEL_DB=$(mktemp) python -m sentinel.web.app --dev
+UPRIGHT_DB=$(mktemp) python -m upright.web.app --dev
 # open http://localhost:5000
 ```
 

@@ -1,4 +1,4 @@
-from sentinel.modes.states import State, can_transition
+from upright.modes.states import State, can_transition
 
 
 def test_idle_can_go_to_post_meal():

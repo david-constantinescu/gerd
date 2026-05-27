@@ -3,7 +3,7 @@
 
 import time
 
-from sentinel.hal.hrv import _open_bus, _read_sample
+from upright.hal.hrv import _open_bus, _read_sample
 
 
 def main() -> int:

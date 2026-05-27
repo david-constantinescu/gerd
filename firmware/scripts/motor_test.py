@@ -3,7 +3,7 @@
 
 import time
 
-from sentinel.hal.motor import Motor
+from upright.hal.motor import Motor
 
 
 def main() -> int:

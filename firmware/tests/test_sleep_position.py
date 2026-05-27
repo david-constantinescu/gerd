@@ -1,4 +1,4 @@
-from sentinel.services.sleep import classify_position
+from upright.services.sleep import classify_position
 
 
 def test_left_side_on_left_wear():
