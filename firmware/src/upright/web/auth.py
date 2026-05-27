@@ -34,6 +34,8 @@ def is_authenticated() -> bool:
 def login_user(username: str) -> None:
     session["authenticated"] = True
     session["username"] = username
+    if not session.get("shell_key"):
+        session["shell_key"] = secrets.token_hex(16)
 
 
 def logout_user() -> None:

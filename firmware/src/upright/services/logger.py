@@ -122,6 +122,14 @@ class Logger:
             (time.time(), kind, json.dumps(payload or {})),
         )
 
+    def event_now(self, kind: str, payload: dict[str, Any] | None = None) -> None:
+        """Write an event immediately (meals, symptoms — must show up at once)."""
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO events(ts, kind, payload) VALUES (?, ?, ?)",
+                (time.time(), kind, json.dumps(payload or {})),
+            )
+
     def posture(self, pitch: float, roll: float, state: str) -> None:
         self._enqueue(
             "INSERT INTO posture_log(ts, pitch, roll, state) VALUES (?, ?, ?, ?)",

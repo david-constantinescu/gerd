@@ -96,3 +96,21 @@ label { display: block; margin: 8px 0; }
   border: 1px solid #30363d; background: #0d1117; color: var(--fg);
 }
 .warn { color: var(--warn); }
+.web-terminal {
+  width: 100%;
+  height: 280px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #30363d;
+  padding: 4px;
+  background: #0d1117;
+}
+.toast {
+  position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+  background: #238636; color: #fff; padding: 8px 14px; border-radius: 8px;
+  font-size: 13px; z-index: 20; display: none;
+  pointer-events: none;
+}
+.toast.err { background: #da3633; }
+.web-terminal { position: relative; z-index: 1; touch-action: manipulation; }
+button, .btn, .tab { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }

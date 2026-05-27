@@ -30,6 +30,29 @@ def _posture_status(pct: float, alert: bool) -> str:
     return "LOW"
 
 
+def _draw_demo_badge(d: ImageDraw.ImageDraw, w: int) -> None:
+    """Single D immediately left of the battery icon."""
+    bat_x = max(4, w - 34)
+    d.text((bat_x - 8, 4), "D", fill=theme._C_WARN)
+
+
+def _draw_score_bar(
+    d: ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    bar_w: int,
+    pct: float,
+    *,
+    bar_h: int = 7,
+) -> None:
+    pct = max(0.0, min(100.0, float(pct)))
+    d.text((x, y), "Score", fill=theme._C_DIM)
+    bar_y = y + 10
+    theme.progress_bar(d, x, bar_y, bar_w, bar_h, pct / 100.0)
+    label = f"{int(pct)}%"
+    d.text((x + bar_w - 26, bar_y - 1), label, fill=theme._C_FG)
+
+
 def _draw_battery(d: ImageDraw.ImageDraw, ctx: dict, w: int) -> None:
     pct = int(ctx.get("battery_pct", 100))
     low = bool(ctx.get("battery_low", False))
@@ -106,9 +129,7 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         d.text((4, 4), f"{now} {status}", fill=theme._C_WARN)
         _draw_battery(d, ctx, w)
         theme.hr(d, 17, w)
-        d.text((4, 21), "Uprightness", fill=theme._C_DIM)
-        theme.progress_bar(d, 4, 32, bar_w, 7, posture / 100.0)
-        d.text((w - 36, 30), f"{int(posture)}%", fill=theme._C_FG)
+        _draw_score_bar(d, 4, 21, bar_w, posture)
         d.text((4, 42), f"P {pitch:+.0f}° R {roll:+.0f}°", fill=theme._C_FG)
         d.text((4, 54), "Straighten up!", fill=theme._C_WARN)
         y = 66
@@ -121,7 +142,7 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, 4), now, fill=theme._C_FG)
     d.text((50, 4), status, fill=theme._C_ACCENT)
     if ctx.get("demo_mode"):
-        d.text((w - 44, 4), "DEMO", fill=theme._C_WARN)
+        _draw_demo_badge(d, w)
     _draw_battery(d, ctx, w)
     d.text((4, 16), f"{date}  {wear} side", fill=theme._C_DIM)
     week_avg = ctx.get("sleep_week_avg")
@@ -130,9 +151,7 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
     theme.hr(d, 28, w)
 
-    d.text((4, 32), "Uprightness", fill=theme._C_DIM)
-    theme.progress_bar(d, 4, 42, bar_w, 7, posture / 100.0)
-    d.text((w - 36, 40), f"{int(posture)}%", fill=theme._C_FG)
+    _draw_score_bar(d, 4, 32, bar_w, posture)
 
     d.text((4, 52), f"P {pitch:+.0f}°  R {roll:+.0f}°", fill=theme._C_FG)
 
@@ -161,9 +180,7 @@ def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, 34), remaining, fill=theme._C_FG)
     theme.progress_bar(d, 4, 48, max(40, w - 8), 7, min(1.0, frac))
 
-    d.text((4, 60), "Uprightness", fill=theme._C_DIM)
-    theme.progress_bar(d, 4, 70, max(40, w - 44), 6, posture / 100.0)
-    d.text((w - 36, 68), f"{int(posture)}%", fill=theme._C_FG)
+    _draw_score_bar(d, 4, 60, max(40, w - 44), posture, bar_h=6)
     d.text((4, 80), f"Pitch {pitch:+.0f}°  ate {meal_at}", fill=theme._C_DIM)
 
     y = 92

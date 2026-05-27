@@ -438,7 +438,7 @@ class ModeManager:
     def _save_symptom(self, severity: int, type_idx: int, now: float) -> None:
         self._symptom_severity_label = SYMPTOM_SEVERITIES[severity - 1]
         self._symptom_type_label = SYMPTOM_TYPES[type_idx]
-        self.db.event(
+        self.db.event_now(
             "symptom",
             {
                 "severity": severity,
@@ -488,7 +488,9 @@ class ModeManager:
     def _log_meal(self, notes: str = "") -> None:
         self.ctx.meal_started_at = time.time()
         self.ctx.meal_window_s = TUNABLES.post_meal_default_hours * 3600
-        self.db.event("meal", {"notes": notes, "window_s": self.ctx.meal_window_s})
+        self.db.event_now(
+            "meal", {"notes": notes, "window_s": self.ctx.meal_window_s}
+        )
         self.bus.publish(Event(EventType.MEAL_LOGGED, payload={"notes": notes}))
         self._transition(State.POST_MEAL)
 
@@ -548,7 +550,7 @@ class ModeManager:
             if kind == "meal":
                 self._log_meal(notes=payload.get("notes", ""))
             elif kind == "symptom":
-                self.db.event("symptom", payload)
+                self.db.event_now("symptom", payload)
             elif kind == "water":
                 self.db.event("water", payload)
             elif kind == "med_ack":
@@ -579,7 +581,7 @@ class ModeManager:
                 if self.ctx.state not in (State.IDLE, State.POST_MEAL):
                     self._transition(State.IDLE)
             elif kind == "cmd_symptom":
-                self.db.event(
+                self.db.event_now(
                     "symptom",
                     {
                         "severity": int(payload.get("severity", 2)),

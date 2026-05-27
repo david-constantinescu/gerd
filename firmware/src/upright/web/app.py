@@ -42,6 +42,7 @@ from ..services import analytics as analytics_service
 from ..services import demo_seed
 from ..services import foods as foods_service
 from ..services.logger import Logger
+from .shell import PtyShell
 
 app = Flask(
     __name__,
@@ -194,24 +195,26 @@ def api_auth_status():
 @app.post("/api/log/meal")
 def api_log_meal():
     data = request.get_json(silent=True) or {}
+    notes = str(data.get("notes", ""))
+    window_s = TUNABLES.post_meal_default_hours * 3600.0
     db = _db()
-    db.push_inbox("meal", {"notes": data.get("notes", "")})
+    db.event_now("meal", {"notes": notes, "window_s": window_s})
+    db.push_inbox("meal", {"notes": notes, "window_s": window_s})
     db.close()
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "queued": True})
 
 
 @app.post("/api/log/symptom")
 def api_log_symptom():
     data = request.get_json(silent=True) or {}
+    payload = {
+        "severity": int(data.get("severity", 1)),
+        "type": data.get("type", "Heartburn"),
+        "notes": data.get("notes", ""),
+    }
     db = _db()
-    db.push_inbox(
-        "symptom",
-        {
-            "severity": int(data.get("severity", 1)),
-            "type": data.get("type", "heartburn"),
-            "notes": data.get("notes", ""),
-        },
-    )
+    db.event_now("symptom", payload)
+    db.push_inbox("symptom", payload)
     db.close()
     return jsonify({"ok": True})
 
@@ -219,8 +222,42 @@ def api_log_symptom():
 @app.post("/api/log/water")
 def api_log_water():
     db = _db()
+    db.event_now("water", {})
     db.push_inbox("water", {})
     db.close()
+    return jsonify({"ok": True})
+
+
+@app.get("/api/terminal/output")
+@require_login
+def api_terminal_output():
+    key = session.get("shell_key")
+    if not key:
+        return jsonify({"data": ""})
+    return jsonify({"data": PtyShell.get(key).read()})
+
+
+@app.post("/api/terminal/input")
+@require_login
+def api_terminal_input():
+    data = request.get_json(silent=True) or {}
+    key = session.get("shell_key")
+    if not key:
+        return jsonify({"ok": False, "error": "no shell session"}), 400
+    PtyShell.get(key).write(data.get("data", ""))
+    return jsonify({"ok": True})
+
+
+@app.post("/api/terminal/resize")
+@require_login
+def api_terminal_resize():
+    data = request.get_json(silent=True) or {}
+    key = session.get("shell_key")
+    if key:
+        PtyShell.get(key).resize(
+            int(data.get("rows", 24)),
+            int(data.get("cols", 80)),
+        )
     return jsonify({"ok": True})
 
 
