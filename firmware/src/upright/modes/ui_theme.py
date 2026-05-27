@@ -100,7 +100,7 @@ def battery_icon(
     tw = bbox[2] - bbox[0]
     th = bbox[3] - bbox[1]
     tx = ix + max(0, (inner_w - tw) // 2)
-    ty = iy + max(0, (inner_bottom - iy - th) // 2)
+    ty = iy + max(0, (inner_bottom - iy - th) // 2 - 4)
     chip_pad = 1
     d.rectangle(
         (tx - chip_pad, ty - chip_pad, tx + tw + chip_pad, ty + th + chip_pad),

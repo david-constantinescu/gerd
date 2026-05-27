@@ -4,10 +4,12 @@ Source: `oled menus.pdf`. The on-device TFT renders this layout scaled to **160�
 
 ## Controls (two buttons only)
 
-| Button | GPIO | Role (replaces encoder + back in PDF) |
-|--------|------|----------------------------------------|
-| **Top** | 20 | **Tap:** previous · **Hold 1.8s:** back (fires while held) |
-| **Bottom** | 21 | **Tap:** next · **Hold 1.8s:** select (fires while held) |
+| Button | GPIO | Default |
+|--------|------|---------|
+| **Top** | 20 | **Short:** next option down · **Long (1.8s, fires while held):** back / close submenu |
+| **Bottom** | 21 | **Short:** select highlighted option · **Long:** open highlighted branch (from main menu) or open main menu from watch |
+
+Non-default actions show on-screen as `top:` / `bottom:` hints only when needed (e.g. food photo: `bottom: capture`).
 
 No rotary encoder is connected.
 
@@ -21,11 +23,10 @@ No rotary encoder is connected.
 │ Pitch: -3.2°          82%  │
 │ Last meal: 1h 24m ago      │
 │ Upright ✓                  │
-│ Hold A = meal   B = menu   │
 └────────────────────────────┘
 ```
 
-## Main menu (B short from watch)
+## Main menu (bottom long from watch)
 
 ```
 ┌────────────────────────────┐
@@ -40,16 +41,17 @@ No rotary encoder is connected.
 └────────────────────────────┘
 ```
 
-**In menu:** B short = next · A short = previous (A on first item closes menu) · B long = open highlighted item.
+**In menu:** top short = next · top long = back · bottom short = select · bottom long = open highlighted item.
 
 ## Quick reference
 
-| Screen | A short | A long | B short | B long |
-|--------|---------|--------|---------|--------|
-| Watch | — | Log meal → confirm | Open menu | — |
-| Main menu | Prev / close | Close menu | Next item | Select |
-| Yes/No, lists | Back | — | Next option | Confirm |
-| Food photo | Skip | — | — | Capture |
-| Med reminder | — | — | — | Acknowledge |
+| Screen | Top short | Top long | Bottom short | Bottom long |
+|--------|-----------|----------|--------------|-------------|
+| Watch | — | — | — | Open main menu |
+| Main menu | Next | Close / back | Select | Open branch |
+| Lists / yes-no | Next | Back | Select | — |
+| Food photo | Next | Back | Select (capture) | Capture |
+| Calibrate | — | Exit | — | Capture step |
+| Med reminder | Next | Back | Acknowledge | Acknowledge |
 
 Menus auto-close after **30 s** idle (returns to watch face).

@@ -51,7 +51,7 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         d.text((72, 4), f"{bpm}bpm", fill=theme._C_ACCENT)
         _draw_battery(d, ctx, w)
         theme.hr(d, 20, w)
-        d.text((4, 26), "Posture", fill=theme._C_FG)
+        d.text((4, 26), "Posture score", fill=theme._C_FG)
         theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
         d.text((4, 56), f"Pitch {pitch:+.1f} deg", fill=theme._C_FG)
         d.text((max(4, w - 48), 56), f"{int(posture)}%", fill=theme._C_FG)
@@ -65,13 +65,12 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     if bpm != "--":
         d.text((max(4, w - 62), 18), f"{bpm} bpm", fill=theme._C_DIM)
     theme.hr(d, 20, w)
-    d.text((4, 26), "Posture", fill=theme._C_FG)
+    d.text((4, 26), "Posture score", fill=theme._C_FG)
     theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
     d.text((4, 56), f"Pitch {pitch:+.1f} deg", fill=theme._C_FG)
     d.text((max(4, w - 48), 56), f"{int(posture)}%", fill=theme._C_FG)
     d.text((4, 72), f"Meal {last_meal}", fill=theme._C_FG)
     d.text((4, 88), "Upright OK", fill=theme._C_FG)
-    theme.footer_hint(d, "top up/back  bot sel", h)
 
 
 def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -85,13 +84,12 @@ def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, 4), f"{now}  POST-MEAL", fill=theme._C_ACCENT)
     _draw_battery(d, ctx, w)
     theme.hr(d, 20, w)
-    d.text((4, 26), "Posture", fill=theme._C_FG)
+    d.text((4, 26), "Posture score", fill=theme._C_FG)
     theme.progress_bar(d, 4, 40, max(40, w - 8), 10, posture / 100.0)
     d.text((4, 56), f"Stay up {remaining}", fill=theme._C_FG)
     theme.progress_bar(d, 4, 72, max(40, w - 8), 10, frac)
     d.text((4, 90), f"Meal at {meal_at}", fill=theme._C_DIM)
     d.text((max(4, w - 48), 40), f"{int(posture)}%", fill=theme._C_FG)
-    theme.footer_hint(d, "top up/back  bot sel", h)
 
 
 def draw_main_menu(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -115,7 +113,6 @@ def draw_meal_confirm(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     idx = int(ctx.get("menu_index", 0))
     theme.menu_row(d, 64, "> Yes" if idx == 0 else "  Yes", w=w, selected=(idx == 0))
     theme.menu_row(d, 84, "> No" if idx == 1 else "  No", w=w, selected=(idx == 1))
-    theme.footer_hint(d, "top back  bot select", h)
 
 
 def draw_food_photo_prompt(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -125,7 +122,7 @@ def draw_food_photo_prompt(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     idx = int(ctx.get("menu_index", 0))
     theme.menu_row(d, 56, "> Capture", w=w, selected=(idx == 0))
     theme.menu_row(d, 76, "  Skip photo", w=w, selected=(idx == 1))
-    theme.footer_hint(d, "hold bot=capture", h)
+    theme.footer_hint(d, "bottom: capture", h)
 
 
 def draw_food_analysing(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -135,6 +132,25 @@ def draw_food_analysing(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     theme.progress_bar(d, 4, 36, max(40, w - 8), 12, frac)
     d.text((4, 56), "Running model...", fill=theme._C_FG)
     d.text((4, 72), "Please wait", fill=theme._C_DIM)
+
+
+def draw_food_preview(img: Image.Image, d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, "PHOTO", w)
+    preview = ctx.get("food_preview_image")
+    if preview is None:
+        d.text((4, 40), "No preview", fill=theme._C_DIM)
+        return
+    max_w = w - 16
+    max_h = h - 36
+    pw, ph = preview.size
+    scale = min(max_w / pw, max_h / ph)
+    tw = max(1, int(pw * scale))
+    th = max(1, int(ph * scale))
+    thumb = preview.resize((tw, th), Image.Resampling.LANCZOS)
+    x = (w - tw) // 2
+    y = 24
+    img.paste(thumb, (x, y))
 
 
 def draw_food_result(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -148,7 +164,6 @@ def draw_food_result(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, 60), advice, fill=theme._C_FG)
     idx = int(ctx.get("menu_index", 0))
     theme.menu_row(d, 84, "> Confirm", w=w, selected=(idx == 0))
-    theme.footer_hint(d, "hold bot=confirm", h)
 
 
 def draw_meal_saved(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -205,7 +220,6 @@ def draw_med_reminder(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     when = ctx.get("menu_pending_med_time", "")
     d.text((4, 32), name, fill=theme._C_FG)
     d.text((4, 48), f"Due: {when}", fill=theme._C_DIM)
-    theme.footer_hint(d, "hold bot=confirm", h)
 
 
 def draw_med_ack(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -221,7 +235,6 @@ def draw_settings(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     theme.title_bar(d, "SETTINGS", w)
     d.text((4, 32), "Edit on phone:", fill=theme._C_FG)
     d.text((4, 48), "192.168.1.1", fill=theme._C_ACCENT)
-    theme.footer_hint(d, "top=back", h)
 
 
 def draw_about(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -230,7 +243,6 @@ def draw_about(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     d.text((4, 32), "UPRIGHT", fill=theme._C_FG)
     d.text((4, 48), f"v{ctx.get('version', '0.1.0')}", fill=theme._C_DIM)
     d.text((4, 64), "GERD wearable", fill=theme._C_FG)
-    theme.footer_hint(d, "top=back", h)
 
 
 def draw_flash(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -245,7 +257,7 @@ def draw_calibrating(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     step = (ctx.get("step", "Stand upright") or "")[:22]
     d.text((4, 32), step, fill=theme._C_FG)
     d.text((4, 48), "Hold still", fill=theme._C_DIM)
-    theme.footer_hint(d, "hold bot=capture", h)
+    theme.footer_hint(d, "bottom: capture", h)
 
 
 def draw_booting(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -266,6 +278,7 @@ _MENU_DRAWERS = {
     "main": draw_main_menu,
     "meal_confirm": draw_meal_confirm,
     "food_photo": draw_food_photo_prompt,
+    "food_preview": None,  # handled in render()
     "food_analysing": draw_food_analysing,
     "food_result": draw_food_result,
     "meal_saved": draw_meal_saved,
@@ -294,8 +307,12 @@ def render(state: State, ctx: dict, oled) -> None:
         return
 
     screen = draw_ctx.get("menu_screen", "")
-    if draw_ctx.get("menu_open") and screen in _MENU_DRAWERS:
-        _MENU_DRAWERS[screen](d, draw_ctx)
+    if draw_ctx.get("menu_open") and screen == "food_preview":
+        draw_food_preview(img, d, draw_ctx)
+    elif draw_ctx.get("menu_open") and screen in _MENU_DRAWERS:
+        drawer = _MENU_DRAWERS[screen]
+        if drawer is not None:
+            drawer(d, draw_ctx)
     elif state == State.BOOTING:
         draw_booting(d, draw_ctx)
     elif state == State.POST_MEAL:

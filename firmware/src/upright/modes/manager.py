@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from ..config import DISPLAY_MIN_REFRESH_SECONDS, TUNABLES
+from ..config import DISPLAY_MIN_REFRESH_SECONDS, DISPLAY_PITCH_REFRESH_SECONDS, TUNABLES
 from ..events import Event, EventBus, EventType
 from ..hal import imu
 from ..hal.display import Display
@@ -74,6 +74,9 @@ class ModeManager:
         self._last_render = 0.0
         self._last_sched_tick = 0.0
         self._last_view_sig: tuple | None = None
+        self._last_pitch_render = 0.0
+        self._food_preview = None
+        self._pitch_display: float | None = None
         self._display_demo = os.environ.get("UPRIGHT_DISPLAY_DEMO", "").lower() in (
             "1",
             "true",
@@ -105,7 +108,13 @@ class ModeManager:
     # -------------------------------------------------- handlers
 
     def _handle_posture(self, ev: Event) -> None:
-        self.ctx.pitch = ev.payload["pitch"] - self.ctx.calibration_baseline_pitch
+        raw_pitch = ev.payload["pitch"] - self.ctx.calibration_baseline_pitch
+        alpha = max(0.05, min(1.0, TUNABLES.pitch_display_alpha))
+        if self._pitch_display is None:
+            self._pitch_display = raw_pitch
+        else:
+            self._pitch_display = alpha * raw_pitch + (1.0 - alpha) * self._pitch_display
+        self.ctx.pitch = self._pitch_display
         self.ctx.roll = ev.payload["roll"]
 
         threshold = (
@@ -118,11 +127,14 @@ class ModeManager:
             self.sleep.sample(self.ctx.roll)
             return
 
-        # Posture percent: linear fall-off past threshold.
-        deviation = max(0.0, abs(self.ctx.pitch) - threshold / 2)
-        self.ctx.posture_pct = max(0.0, 100.0 - deviation * 3.0)
+        # Posture score: 100% at upright, falls off after dead zone + half threshold.
+        adjusted = max(0.0, abs(self.ctx.pitch) - TUNABLES.posture_deadzone_deg)
+        deviation = max(0.0, adjusted - threshold / 2)
+        self.ctx.posture_pct = max(
+            0.0, 100.0 - deviation * TUNABLES.posture_pct_slope
+        )
 
-        if abs(self.ctx.pitch) > threshold:
+        if adjusted > threshold:
             if self.ctx.slouch_started_at == 0.0:
                 self.ctx.slouch_started_at = time.time()
             elif time.time() - self.ctx.slouch_started_at > TUNABLES.pitch_sustained_seconds:
@@ -185,7 +197,7 @@ class ModeManager:
 
     def _on_a_short(self, now: float) -> None:
         if self.menu.open and self.menu.screen != "flash":
-            self.menu.prev_item()
+            self.menu.next_item()
             return
         if self.ctx.state == State.CALIBRATING:
             self._transition(State.IDLE)
@@ -202,13 +214,13 @@ class ModeManager:
             self.menu.close()
 
     def _on_b_short(self, now: float) -> None:
-        if self.menu.open:
-            if self.menu.screen == "flash":
-                return
-            self.menu.next_item()
+        if self.menu.screen == "flash":
             return
-        if self.ctx.state in (State.IDLE, State.POST_MEAL):
-            self.menu.open_main(now)
+        if not self.menu.open:
+            return
+        action = self.menu.current_action()
+        if action:
+            self._menu_action(action, now)
 
     def _on_b_long(self, now: float) -> None:
         if self.ctx.state == State.CALIBRATING:
@@ -222,15 +234,27 @@ class ModeManager:
             self.menu.close()
             return
         if not self.menu.open:
+            if self.ctx.state in (State.IDLE, State.POST_MEAL):
+                self.menu.open_main(now)
             return
-        action = self.menu.current_action()
-        if action:
-            self._menu_action(action, now)
+        if self.menu.screen == "main":
+            action = self.menu.current_action()
+            if action:
+                self._menu_enter(action, now)
+            return
+        if self.menu.screen == "food_photo":
+            self._capture_food(now)
+            return
+        if self.menu.screen == "med_prompt" and self.menu.pending_med:
+            self.meds.acknowledge(self.menu.pending_med)
+            self.menu.screen = "med_ack"
+            self.menu.flash_until = now + 2.0
 
     def _menu_back(self) -> None:
         parent = {
             "meal_confirm": "main",
             "food_photo": "meal_confirm",
+            "food_preview": "food_photo",
             "food_result": "food_photo",
             "symptom_severity": "main",
             "symptom_type": "symptom_severity",
@@ -250,19 +274,35 @@ class ModeManager:
         if nxt == "main":
             self.menu.open = True
 
-    def _menu_action(self, action: str, now: float) -> None:
+    def _menu_enter(self, action: str, now: float) -> None:
+        """Bottom long — open the highlighted menu branch."""
         if action == "meal":
             self.menu.screen = "meal_confirm"
             self.menu.index = 0
-        elif action == "meal_yes":
+        elif action == "symptom":
+            self.menu.screen = "symptom_severity"
+            self.menu.index = 0
+        elif action == "med":
+            self.menu.screen = "settings"
+            self.menu.index = 0
+        elif action == "settings":
+            self.menu.screen = "settings"
+            self.menu.index = 0
+        elif action == "sleep":
+            self.menu.close()
+            self._transition(State.PRE_SLEEP)
+        elif action == "about":
+            self.menu.screen = "about"
+            self.menu.index = 0
+
+    def _menu_action(self, action: str, now: float) -> None:
+        """Bottom short — confirm the highlighted choice."""
+        if action == "meal_yes":
             self._log_meal()
             self.menu.screen = "food_photo"
             self.menu.index = 0
         elif action == "meal_no":
             self.menu.close()
-        elif action == "symptom":
-            self.menu.screen = "symptom_severity"
-            self.menu.index = 0
         elif action.startswith("symptom_type_"):
             idx = int(action.rsplit("_", 1)[-1])
             self._save_symptom(self.menu.symptom_severity + 1, idx, now)
@@ -277,18 +317,6 @@ class ModeManager:
                 self.meds.acknowledge(name)
             self.menu.screen = "med_ack"
             self.menu.flash_until = now + 2.0
-        elif action == "med":
-            self.menu.screen = "settings"
-            self.menu.index = 0
-        elif action == "settings":
-            self.menu.screen = "settings"
-            self.menu.index = 0
-        elif action == "sleep":
-            self.menu.close()
-            self._transition(State.PRE_SLEEP)
-        elif action == "about":
-            self.menu.screen = "about"
-            self.menu.index = 0
         elif action == "food_capture":
             self._capture_food(now)
         elif action == "food_skip":
@@ -322,10 +350,21 @@ class ModeManager:
         self.menu.flash_until = now + 2.5
 
     def _capture_food(self, now: float) -> None:
+        from ..hal.camera import capture_with_warmup
+
+        self._transition(State.FOOD_PHOTO)
         self.menu.screen = "food_analysing"
         self._paint_now()
-        self._transition(State.FOOD_PHOTO)
-        self._run_food_photo()
+        img = capture_with_warmup()
+        if img is not None:
+            self._food_preview = img.copy()
+            self.menu.screen = "food_preview"
+            self._paint_now()
+            time.sleep(1.0)
+        self._food_preview = None
+        self.menu.screen = "food_analysing"
+        self._paint_now()
+        self._run_food_photo(img)
         self.menu.open = True
         self.menu.screen = "food_result"
         self.menu.index = 0
@@ -348,11 +387,12 @@ class ModeManager:
         self.bus.publish(Event(EventType.MEAL_LOGGED, payload={"notes": notes}))
         self._transition(State.POST_MEAL)
 
-    def _run_food_photo(self) -> None:
+    def _run_food_photo(self, img=None) -> None:
         from ..hal.camera import capture_with_warmup
         from ..services import foods
 
-        img = capture_with_warmup()
+        if img is None:
+            img = capture_with_warmup()
         result = foods.classify(img) if img is not None else None
         if result is None:
             self.ctx.food_result = {
@@ -431,7 +471,7 @@ class ModeManager:
             datetime.now().strftime("%H:%M"),
             ctx.get("battery_text"),
             int(ctx.get("posture_pct", 0) // 10) * 10,
-            int(round(ctx.get("pitch", 0) / 5.0) * 5),
+            int(round(float(ctx.get("pitch", 0)) * 2) / 2),
             ctx.get("alert_active"),
             ctx.get("level"),
             ctx.get("meal_age_bucket"),
@@ -474,7 +514,7 @@ class ModeManager:
             "battery_low": self.ctx.battery_low,
             "battery_text": "LOW" if self.ctx.battery_low else f"{self.ctx.battery_pct}%",
             "posture_pct": float(int(self.ctx.posture_pct // 2) * 2),
-            "pitch": round(self.ctx.pitch, 0),
+            "pitch": round(self.ctx.pitch, 1),
             "alert_active": self.ctx.alert_active,
             "level": self.ctx.alert_level,
             "last_meal_text": last_meal_text,
@@ -500,6 +540,7 @@ class ModeManager:
                 f"{int((TUNABLES.post_meal_default_hours % 1) * 60):02d}m"
             ),
             "analyse_progress": 0.65,
+            "food_preview_image": self._food_preview,
             **self.menu.to_ctx(),
         }
 
@@ -570,7 +611,11 @@ class ModeManager:
             urgent = False
             if changed and self._last_view_sig is not None:
                 prev = self._last_view_sig
-                urgent = prev[0] != sig[0] or prev[5] != sig[5]  # FSM state or slouch alert
+                urgent = prev[0] != sig[0] or prev[5] != sig[5]
+                pitch_due = now - self._last_pitch_render >= DISPLAY_PITCH_REFRESH_SECONDS
+                if len(prev) > 4 and len(sig) > 4 and prev[4] != sig[4] and pitch_due:
+                    urgent = True
+                    self._last_pitch_render = now
             interval_ok = (
                 self.menu.open
                 or now - self._last_render >= DISPLAY_MIN_REFRESH_SECONDS

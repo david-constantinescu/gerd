@@ -66,6 +66,8 @@ OLED_AUTO_BLANK_SECONDS = 0  # keep SPI TFT on continuously
 
 # SPI TFT: minimum seconds between full-frame paints (reduces visible scan “wave”).
 DISPLAY_MIN_REFRESH_SECONDS = 120.0
+# Watch-face pitch/posture line can refresh more often.
+DISPLAY_PITCH_REFRESH_SECONDS = 1.0
 
 
 # --- Tunables (overridable via config.json) --------------------------------
@@ -80,6 +82,12 @@ class Tunables:
     posture_sample_hz_idle: float = 2.0
     posture_sample_hz_post_meal: float = 5.0
     posture_sample_hz_sleep: float = 0.03  # one sample every ~33s
+
+    # Posture score mapping (display + slouch logic)
+    posture_deadzone_deg: float = 5.0
+    posture_pct_slope: float = 1.5  # gentler fall-off than legacy 3.0
+    imu_smooth_alpha: float = 0.18  # EMA weight for new accel samples (lower = smoother)
+    pitch_display_alpha: float = 0.25  # extra UI smoothing in the mode manager
 
     # Alerts
     alert_cooldown_seconds: float = 300.0
