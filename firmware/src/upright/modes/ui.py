@@ -9,10 +9,10 @@ from PIL import Image, ImageDraw
 from .states import State
 
 # High-contrast TFT palette (readability over aesthetics).
-_C_BG = (255, 255, 255)
-_C_FG = (0, 0, 0)
-_C_ACCENT = (0, 0, 0)
-_C_WARN = (0, 0, 0)
+_C_BG = (0, 0, 0)
+_C_FG = (255, 255, 255)
+_C_ACCENT = (220, 220, 220)
+_C_WARN = (180, 180, 180)
 
 
 def _bar_mono(d: ImageDraw.ImageDraw, x: int, y: int, w: int, h: int, frac: float) -> None:

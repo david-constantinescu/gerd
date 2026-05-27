@@ -275,8 +275,8 @@ class ModeManager:
             "battery_pct": self.ctx.battery_pct,
             "battery_low": self.ctx.battery_low,
             "battery_text": "LOW" if self.ctx.battery_low else f"{self.ctx.battery_pct}%",
-            "posture_pct": self.ctx.posture_pct,
-            "pitch": self.ctx.pitch,
+            "posture_pct": float(int(self.ctx.posture_pct // 2) * 2),
+            "pitch": round(self.ctx.pitch, 0),
             "alert_active": self.ctx.alert_active,
             "level": self.ctx.alert_level,
             "last_meal_text": last_meal_text,
@@ -298,8 +298,8 @@ class ModeManager:
     # -------------------------------------------------- main loop
 
     def run(self, stop: threading.Event) -> None:
+        self._transition(State.IDLE)
         if self._display_demo:
-            self._transition(State.IDLE)
             log.info("display demo mode enabled — holding SYSTEM OK screen")
         while not stop.is_set():
             ev = self.bus.get(timeout=0.2)
@@ -325,8 +325,8 @@ class ModeManager:
                 self._maybe_exit_post_meal()
                 self._maybe_enter_sleep()
 
-            # render at ~10 Hz; Display.show() skips unchanged frames.
-            if now - self._last_render > 0.1:
+            # render at ~2.5 Hz; Display.show() skips unchanged frames.
+            if now - self._last_render > 0.4:
                 self._last_render = now
                 try:
                     state = State.IDLE if self._display_demo else self.ctx.state

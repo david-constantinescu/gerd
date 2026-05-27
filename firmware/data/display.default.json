@@ -1,15 +1,15 @@
 {
   "interface": "spi",
-  "driver": "st7735",
+  "driver": "adafruit_st7735r",
   "width": 128,
-  "height": 128,
-  "dc": 24,
-  "rst": 25,
-  "rotate": 0,
-  "bgr": false,
-  "h_offset": 0,
-  "v_offset": 0,
-  "bus_speed_hz": 500000,
+  "height": 160,
+  "dc": 25,
+  "rst": 24,
+  "rotate": 180,
+  "x_offset": 0,
+  "y_offset": 0,
   "port": 0,
-  "device": 0
+  "device": 0,
+  "bus_speed_hz": 500000,
+  "swap_rb": false
 }
