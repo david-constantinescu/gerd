@@ -22,6 +22,7 @@ from ..config import (
 )
 from ..events import Event, EventBus, EventType
 from ..hal import imu
+from ..hal.camera import CameraPreview
 from ..hal.display import Display
 from ..services.alerts import AlertManager
 from ..services.logger import Logger
@@ -90,6 +91,8 @@ class ModeManager:
         self._last_view_sig: tuple | None = None
         self._last_pitch_render = 0.0
         self._food_preview = None
+        self._camera_preview = CameraPreview()
+        self._food_live_preview = None
         self._pitch_display: float | None = None
         self._battery_low_since = 0.0
         self._lying_since: float = 0.0
@@ -524,6 +527,7 @@ class ModeManager:
     def _capture_food(self, now: float) -> None:
         from ..hal.camera import capture_with_warmup
 
+        self._camera_preview.stop()
         self._transition(State.FOOD_PHOTO)
         self.menu.screen = "food_analysing"
         self._paint_now()
@@ -711,11 +715,15 @@ class ModeManager:
             ctx.get("risk"),
         )
         if ctx.get("menu_open"):
-            return base + (
+            extra: list = [
                 ctx.get("menu_screen"),
                 ctx.get("menu_index"),
                 ctx.get("menu_flash"),
-            )
+            ]
+            if ctx.get("menu_screen") == "food_photo":
+                live = ctx.get("food_live_preview_image")
+                extra.append(id(live) if live is not None else 0)
+            return base + tuple(extra)
         return base
 
     def _view_ctx(self) -> dict:
@@ -834,13 +842,30 @@ class ModeManager:
             ),
             "analyse_progress": 0.65,
             "food_preview_image": self._food_preview,
+            "food_live_preview_image": self._food_live_preview,
             **self.menu.to_ctx(),
         }
+
+    def _sync_camera_preview(self) -> None:
+        want = self.menu.open and self.menu.screen == "food_photo"
+        if want:
+            self._camera_preview.start()
+        else:
+            self._camera_preview.stop()
+            self._food_live_preview = None
+
+    def _refresh_food_live_preview(self) -> None:
+        if self.menu.open and self.menu.screen == "food_photo":
+            live = self._camera_preview.latest()
+            if live is not None:
+                self._food_live_preview = live
 
     def _paint_now(self) -> None:
         self.oled.note_activity()
         if self.oled.is_blanked:
             self.oled.wake()
+        self._sync_camera_preview()
+        self._refresh_food_live_preview()
         state = State.IDLE if self._display_demo else self.ctx.state
         view = self._view_ctx()
         try:
@@ -900,6 +925,9 @@ class ModeManager:
                 elif self.menu.screen in ("symptom_saved", "meal_saved", "med_ack"):
                     if now > self.menu.flash_until:
                         self.menu.close()
+
+            self._sync_camera_preview()
+            self._refresh_food_live_preview()
 
             # Full-frame SPI refresh only when content meaningfully changes, and
             # at most once per DISPLAY_MIN_REFRESH_SECONDS (clock via minute in sig).

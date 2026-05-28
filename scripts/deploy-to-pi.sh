@@ -4,6 +4,7 @@
 # Usage:
 #   ./scripts/deploy-to-pi.sh
 #   PI_HOST=softhoarders-pi.local PI_USER=softhoarders ./scripts/deploy-to-pi.sh
+#   PI_HOST=100.87.247.127 ./scripts/deploy-to-pi.sh   # Tailscale
 #
 # One-time key setup (no password on future runs):
 #   ssh-copy-id softhoarders@softhoarders-pi.local

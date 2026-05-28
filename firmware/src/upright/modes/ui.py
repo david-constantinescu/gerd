@@ -217,13 +217,31 @@ def draw_meal_confirm(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     theme.menu_row(d, 84, "> No" if idx == 1 else "  No", w=w, selected=(idx == 1))
 
 
-def draw_food_photo_prompt(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+def _paste_camera_thumb(
+    img: Image.Image, preview, *, top: int, max_w: int, max_h: int
+) -> None:
+    w, h = _wh({"_w": img.width, "_h": img.height})
+    pw, ph = preview.size
+    scale = min(max_w / pw, max_h / ph)
+    tw = max(1, int(pw * scale))
+    th = max(1, int(ph * scale))
+    thumb = preview.resize((tw, th), Image.Resampling.LANCZOS)
+    x = (w - tw) // 2
+    img.paste(thumb, (x, top))
+
+
+def draw_food_photo_prompt(img: Image.Image, d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
     theme.title_bar(d, "FOOD PHOTO", w)
-    d.text((4, 32), "Point camera at food", fill=theme._C_FG)
+    live = ctx.get("food_live_preview_image")
+    if live is not None:
+        _paste_camera_thumb(img, live, top=22, max_w=w - 8, max_h=h - 58)
+    else:
+        d.text((4, 32), "Point camera at food", fill=theme._C_FG)
     idx = int(ctx.get("menu_index", 0))
-    theme.menu_row(d, 56, "> Capture", w=w, selected=(idx == 0))
-    theme.menu_row(d, 76, "  Skip photo", w=w, selected=(idx == 1))
+    y0 = h - 44
+    theme.menu_row(d, y0, "> Capture", w=w, selected=(idx == 0))
+    theme.menu_row(d, y0 + 18, "  Skip photo", w=w, selected=(idx == 1))
 
 def draw_food_analysing(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
@@ -241,16 +259,7 @@ def draw_food_preview(img: Image.Image, d: ImageDraw.ImageDraw, ctx: dict) -> No
     if preview is None:
         d.text((4, 40), "No preview", fill=theme._C_DIM)
         return
-    max_w = w - 16
-    max_h = h - 36
-    pw, ph = preview.size
-    scale = min(max_w / pw, max_h / ph)
-    tw = max(1, int(pw * scale))
-    th = max(1, int(ph * scale))
-    thumb = preview.resize((tw, th), Image.Resampling.LANCZOS)
-    x = (w - tw) // 2
-    y = 24
-    img.paste(thumb, (x, y))
+    _paste_camera_thumb(img, preview, top=24, max_w=w - 16, max_h=h - 36)
 
 
 def draw_food_result(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -475,7 +484,7 @@ def draw_sleep(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 _MENU_DRAWERS = {
     "main": draw_main_menu,
     "meal_confirm": draw_meal_confirm,
-    "food_photo": draw_food_photo_prompt,
+    "food_photo": None,
     "food_preview": None,
     "food_analysing": draw_food_analysing,
     "food_result": draw_food_result,
@@ -509,6 +518,8 @@ def render(state: State, ctx: dict, oled) -> None:
     screen = draw_ctx.get("menu_screen", "")
     if draw_ctx.get("menu_open") and screen == "food_preview":
         draw_food_preview(img, d, draw_ctx)
+    elif draw_ctx.get("menu_open") and screen == "food_photo":
+        draw_food_photo_prompt(img, d, draw_ctx)
     elif draw_ctx.get("menu_open") and screen in _MENU_DRAWERS:
         drawer = _MENU_DRAWERS[screen]
         if drawer is not None:
