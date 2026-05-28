@@ -68,10 +68,7 @@ def demo_reminder_plan() -> list[dict[str, Any]]:
     plan = data.get("demo_reminders")
     if plan:
         return plan
-    return [
-        {"name": "Omeprazole", "minutes_after_boot": 2},
-        {"name": "Famotidine", "minutes_after_boot": 8},
-    ]
+    return [{"name": "Omeprazole", "seconds_after_boot": 30}]
 
 
 def demo_med_details(name: str) -> dict[str, str]:

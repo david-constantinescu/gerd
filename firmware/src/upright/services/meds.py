@@ -5,7 +5,8 @@ webapp). The FSM polls :meth:`MedReminders.tick` every loop iteration; due
 reminders fire as ``MED_REMINDER`` events. If the user doesn't acknowledge
 within 5 minutes the reminder fires again.
 
-In demo mode, reminders fire on a schedule relative to demo session boot time.
+In demo mode, a single reminder fires once, relative to demo session boot time
+(see ``demo_week.json`` ``demo_reminders`` — default 30s after boot).
 """
 
 from __future__ import annotations
@@ -53,20 +54,34 @@ class MedReminders:
                 hour=hh, minute=mm
             )
 
+    @staticmethod
+    def _demo_offset_seconds(item: dict) -> float:
+        if "seconds_after_boot" in item:
+            return float(item["seconds_after_boot"])
+        return float(item.get("minutes_after_boot", 0.5)) * 60.0
+
     def _apply_demo_schedule(self) -> None:
         start = demo_seed.get_demo_session_start() or time.time()
         base = datetime.fromtimestamp(start)
-        for item in demo_seed.demo_reminder_plan():
+        self._next.clear()
+        self._pending.clear()
+        plan = demo_seed.demo_reminder_plan()
+        # Showroom: one med popup per boot (first plan entry only).
+        for item in plan[:1]:
             name = str(item.get("name", ""))
             if not name:
                 continue
-            minutes = float(item.get("minutes_after_boot", 2))
-            self._next[name] = base + timedelta(minutes=minutes)
+            offset_s = self._demo_offset_seconds(item)
+            self._next[name] = base + timedelta(seconds=offset_s)
         self._demo_fired.clear()
-        log.info(
-            "demo med schedule from boot: %s",
-            ", ".join(f"{n}@{self._next[n].strftime('%H:%M')}" for n in self._next),
-        )
+        if self._next:
+            name, when = next(iter(self._next.items()))
+            log.info(
+                "demo med reminder once @ +%.0fs (%s at %s)",
+                (when - base).total_seconds(),
+                name,
+                when.strftime("%H:%M:%S"),
+            )
 
     def _lookup_med(self, name: str) -> tuple[str, str, str]:
         with self.db._lock:  # noqa: SLF001
@@ -88,10 +103,6 @@ class MedReminders:
                 if now >= when:
                     self._fire(name)
                     self._demo_fired.add(name)
-            for name, when in list(self._pending.items()):
-                if now - when >= REPEAT_AFTER:
-                    self._fire(name)
-                    self._pending[name] = now
             return
 
         for name, when in list(self._next.items()):

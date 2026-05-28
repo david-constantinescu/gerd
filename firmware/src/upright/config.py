@@ -133,6 +133,7 @@ class Tunables:
     demo_mode: bool = False  # synthetic week dataset; see services.demo_seed
     display_blank_minutes: float = 0.0  # 0 = keep display on (15 caused “frozen” UI)
     button_pins_swapped: bool = False  # set true if top/bottom are wired to B/A
+    button_active_high: bool = False  # set true if pressed = logic high (default: active low)
 
     # Web control panel (change on first boot in production)
     web_username: str = "softhoarders"

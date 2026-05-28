@@ -126,6 +126,37 @@ def _run_boot_sequence(
     return hal_threads
 
 
+def _warm_startup(
+    manager: ModeManager,
+    bus: EventBus,
+    db: logger_service.Logger,
+    *,
+    dry_run: bool,
+    demo_mode: bool,
+) -> list[threading.Thread]:
+    """Service restart — no boot screen; go straight to watch face."""
+    from .modes.states import State
+
+    log.info(
+        "warm start (kernel uptime %.0fs) — skipping boot screen",
+        _kernel_uptime_s(),
+    )
+    if demo_mode and is_cold_boot():
+        demo_seed.restart_demo_on_boot(db)
+        manager.meds._refresh_schedule()
+    db.boot_session()
+    manager._boot_complete = True
+    manager.ctx.state = State.IDLE
+    try:
+        from .modes import ui
+
+        ui.render(State.IDLE, manager._view_ctx(), manager.oled)
+        manager._last_render = time.time()
+    except Exception as e:
+        log.warning("initial watch render failed: %s", e)
+    return _start_hal(bus, dry_run=dry_run)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="upright", description="UpRight firmware")
     parser.add_argument("--dry-run", action="store_true", help="run with HAL stubs (no GPIO/I²C)")
@@ -151,17 +182,33 @@ def main(argv: list[str] | None = None) -> int:
     _init_gpio_pins(dry_run=args.dry_run)
 
     oled = Display(dry_run=args.dry_run, autoprobe=not args.dry_run)
+
+    if not args.dry_run:
+        from .hal.gpio_lgpio import reclaim_button_inputs
+
+        reclaim_button_inputs()
+
     manager = ModeManager(
         bus, db, alerts=alerts, sleep=sleep, meds=meds, display=oled
     )
 
-    hal_threads = _run_boot_sequence(
-        manager,
-        bus,
-        db,
-        dry_run=args.dry_run,
-        demo_mode=bool(tunables.demo_mode),
-    )
+    if is_cold_boot():
+        log.info("cold boot detected — showing startup screen")
+        hal_threads = _run_boot_sequence(
+            manager,
+            bus,
+            db,
+            dry_run=args.dry_run,
+            demo_mode=bool(tunables.demo_mode),
+        )
+    else:
+        hal_threads = _warm_startup(
+            manager,
+            bus,
+            db,
+            dry_run=args.dry_run,
+            demo_mode=bool(tunables.demo_mode),
+        )
 
     stop_evt = threading.Event()
 

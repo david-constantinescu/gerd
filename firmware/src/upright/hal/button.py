@@ -11,9 +11,9 @@ import threading
 import time
 from dataclasses import dataclass, field
 
-from ..config import PIN_BUTTON_A, PIN_BUTTON_B
+from ..config import PIN_BUTTON_A, PIN_BUTTON_B, TUNABLES
 from ..events import Event, EventBus, EventType
-from .gpio_lgpio import claim_input, read_active_low
+from .gpio_lgpio import claim_input, read_gpio
 
 log = logging.getLogger("hal.button")
 
@@ -55,10 +55,16 @@ def _emit(evt_bus: EventBus, st: _BtnState, pattern: str) -> None:
     )
 
 
+def _is_pressed_level(level: int) -> bool:
+    if getattr(TUNABLES, "button_active_high", False):
+        return level == 1
+    return level == 0
+
+
 def _read_pressed(pin: int) -> bool:
-    """Three-sample debounce — helps flaky bottom button contacts."""
-    hits = sum(1 for _ in range(3) if read_active_low(pin))
-    return hits >= 2
+    """Two-sample debounce under the global GPIO lock."""
+    hits = sum(1 for _ in range(2) if _is_pressed_level(read_gpio(pin)))
+    return hits >= 1
 
 
 def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
@@ -67,7 +73,8 @@ def _loop(evt_bus: EventBus, stop: threading.Event) -> None:  # pragma: no cover
         _BtnState("b", PIN_BUTTON_B, double_gap=_BTN_TIMING["b"]),
     ]
     for st in states:
-        claim_input(st.pin)
+        if not claim_input(st.pin):
+            log.error("button %s GPIO %s not claimed", st.name, st.pin)
 
     log.info(
         "buttons GPIO %s / %s — tap only (A gap=%.2fs | B gap=%.2fs)",

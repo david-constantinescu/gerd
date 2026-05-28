@@ -164,10 +164,11 @@ def test_double_b_opens_main_from_watch(mgr: ModeManager) -> None:
     assert mgr.menu.screen == "main"
 
 
-def test_bottom_single_noop_on_watch(mgr: ModeManager) -> None:
+def test_bottom_single_opens_main_from_watch(mgr: ModeManager) -> None:
     mgr.menu.close()
     mgr._on_b_short(time.time())
-    assert not mgr.menu.open
+    assert mgr.menu.open
+    assert mgr.menu.screen == "main"
 
 
 def test_double_b_selects_on_main_menu(mgr: ModeManager) -> None:

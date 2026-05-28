@@ -7,7 +7,7 @@ import sys
 import time
 
 from upright.config import PIN_BUTTON_A, PIN_BUTTON_B
-from upright.hal.gpio_lgpio import claim_input_strict, read_gpio
+from upright.hal.gpio_lgpio import reclaim_input, read_gpio
 
 
 def main() -> int:
@@ -15,7 +15,7 @@ def main() -> int:
     print("Active-low: idle=1, pressed=0\n")
     for pin, name in ((PIN_BUTTON_A, "A top"), (PIN_BUTTON_B, "B bottom")):
         try:
-            claim_input_strict(pin)
+            reclaim_input(pin)
             print(f"  {name} GPIO{pin}: claimed, idle={read_gpio(pin)}")
         except Exception as e:
             print(f"  {name} GPIO{pin}: FAILED — {e}")

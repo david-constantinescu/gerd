@@ -6,8 +6,7 @@
     {"name": "Famotidine", "brand": "Pepcid", "dose": "20mg", "time": "22:00", "frequency": "daily"}
   ],
   "demo_reminders": [
-    {"name": "Omeprazole", "minutes_after_boot": 2},
-    {"name": "Famotidine", "minutes_after_boot": 8}
+    {"name": "Omeprazole", "seconds_after_boot": 30}
   ],
   "sleep": [
     {"day_offset": -6, "duration_s": 24600, "left_pct": 68, "right_pct": 14, "back_pct": 15, "front_pct": 3, "score": 68, "nudges": 2},

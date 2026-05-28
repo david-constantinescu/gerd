@@ -352,6 +352,8 @@ class ModeManager:
             self._menu_select(now)
             return
         if not self.menu.open:
+            if self.ctx.state in (State.IDLE, State.POST_MEAL):
+                self.menu.open_main(now)
             return
         self._menu_select(now)
 

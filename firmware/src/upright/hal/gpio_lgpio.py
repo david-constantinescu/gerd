@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 
-_lock = threading.Lock()
+log = logging.getLogger("hal.gpio")
+
+_lock = threading.RLock()
 _chip: int | None = None
+_claimed_inputs: set[int] = set()
 
 
 def _handle() -> int:
@@ -18,18 +22,62 @@ def _handle() -> int:
         return _chip
 
 
-def claim_input(pin: int) -> None:
-    import logging
-
+def _free_unlocked(h: int, pin: int) -> None:
+    """Release a pin without taking _lock (caller must hold the lock)."""
     import lgpio  # type: ignore[import-not-found]
 
-    log = logging.getLogger("hal.gpio")
+    try:
+        lgpio.gpio_free(h, pin)
+    except lgpio.error:
+        pass
+    _claimed_inputs.discard(pin)
+
+
+def claim_input(pin: int) -> bool:
+    """Claim BCM pin as input with pull-up. Returns True on success."""
+    import lgpio  # type: ignore[import-not-found]
+
     h = _handle()
     with _lock:
         try:
             lgpio.gpio_claim_input(h, pin, lgpio.SET_PULL_UP)
+            _claimed_inputs.add(pin)
+            return True
         except lgpio.error as e:
             log.warning("GPIO %s input claim failed: %s", pin, e)
+            return False
+
+
+def reclaim_input(pin: int) -> bool:
+    """Free then reclaim — use after Blinka/luma display init may have touched the chip."""
+    import lgpio  # type: ignore[import-not-found]
+
+    h = _handle()
+    with _lock:
+        _free_unlocked(h, pin)
+        try:
+            lgpio.gpio_claim_input(h, pin, lgpio.SET_PULL_UP)
+            _claimed_inputs.add(pin)
+            return True
+        except lgpio.error as e:
+            log.warning("GPIO %s reclaim failed: %s", pin, e)
+            return False
+
+
+def reclaim_button_inputs() -> None:
+    """Re-assert button inputs after display drivers initialize."""
+    from ..config import PIN_BUTTON_A, PIN_BUTTON_B
+
+    for pin, label in ((PIN_BUTTON_A, "top"), (PIN_BUTTON_B, "bottom")):
+        ok = reclaim_input(pin)
+        level = read_gpio(pin) if ok else -1
+        log.info(
+            "button GPIO %s (%s): %s idle=%s",
+            pin,
+            label,
+            "ok" if ok else "FAILED",
+            level,
+        )
 
 
 def claim_output(pin: int, *, initial: int = 0) -> None:
@@ -43,10 +91,6 @@ def claim_output(pin: int, *, initial: int = 0) -> None:
             pass
 
 
-def read_active_low(pin: int) -> bool:
-    return read_gpio(pin) == 0
-
-
 def read_gpio(pin: int) -> int:
     """Return 0 or 1 (high = 1)."""
     import lgpio  # type: ignore[import-not-found]
@@ -54,6 +98,10 @@ def read_gpio(pin: int) -> int:
     h = _handle()
     with _lock:
         return int(lgpio.gpio_read(h, pin))
+
+
+def read_active_low(pin: int) -> bool:
+    return read_gpio(pin) == 0
 
 
 def write(pin: int, value: int) -> None:
@@ -65,14 +113,9 @@ def write(pin: int, value: int) -> None:
 
 
 def free(pin: int) -> None:
-    import lgpio  # type: ignore[import-not-found]
-
     h = _handle()
     with _lock:
-        try:
-            lgpio.gpio_free(h, pin)
-        except lgpio.error:
-            pass
+        _free_unlocked(h, pin)
 
 
 def claim_input_strict(pin: int) -> None:
@@ -81,8 +124,9 @@ def claim_input_strict(pin: int) -> None:
 
     h = _handle()
     with _lock:
-        free(pin)
+        _free_unlocked(h, pin)
         lgpio.gpio_claim_input(h, pin, lgpio.SET_PULL_UP)
+        _claimed_inputs.add(pin)
 
 
 def claim_output_strict(pin: int, *, initial: int = 0) -> None:
@@ -90,5 +134,5 @@ def claim_output_strict(pin: int, *, initial: int = 0) -> None:
 
     h = _handle()
     with _lock:
-        free(pin)
+        _free_unlocked(h, pin)
         lgpio.gpio_claim_output(h, pin, initial)
