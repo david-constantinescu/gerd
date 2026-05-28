@@ -27,6 +27,8 @@ pi = [
     "adafruit-blinka>=8.46",
     "adafruit-circuitpython-rgb-display>=3.12",
     "tflite-runtime>=2.14; platform_machine=='aarch64'",
+    "transformers>=4.41",
+    "torch>=2.2",
     "watchdog>=4.0",
     "gunicorn>=21.2",
 ]

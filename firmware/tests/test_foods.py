@@ -79,3 +79,28 @@ def test_classify_maps_food101_label():
     assert result.risk == "HIGH"
     assert result.gerd_score >= 70
     foods._interpreter = None
+
+
+def test_classify_uses_zero_shot_image_and_candidate_labels():
+    foods.reload(config.FOODS_PATH)
+    fake_img = MagicMock()
+    fake_img.resize.return_value.convert.return_value = fake_img
+    fake_pipeline = MagicMock(
+        return_value=[
+            {"label": "pizza", "score": 0.92},
+            {"label": "salad", "score": 0.07},
+        ]
+    )
+
+    with patch.object(foods, "_zero_shot_pipeline", fake_pipeline), patch.object(
+        foods, "_ensure_model", return_value=False
+    ):
+        result = foods.classify(fake_img)
+
+    assert result is not None
+    assert result.name == "Pizza"
+    assert result.confidence == 0.92
+    _, kwargs = fake_pipeline.call_args
+    assert kwargs["images"] is fake_img
+    assert "pizza" in kwargs["candidate_labels"]
+    assert len(kwargs["candidate_labels"]) > 100

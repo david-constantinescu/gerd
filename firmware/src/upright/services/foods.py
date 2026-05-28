@@ -104,8 +104,9 @@ def load(path: Path | None = None) -> dict[str, FoodEntry]:
 
 def reload(path: Path | None = None) -> dict[str, FoodEntry]:
     """Reload dictionary from disk (e.g. after web API edit)."""
-    global _interpreter
+    global _interpreter, _zero_shot_pipeline
     _interpreter = None
+    _zero_shot_pipeline = None
     return load(path)
 
 
@@ -187,6 +188,7 @@ _interpreter = None
 _input_details: list[Any] | None = None
 _output_details: list[Any] | None = None
 _labels: list[str] = []
+_zero_shot_pipeline = None
 
 
 def _ensure_model() -> bool:
@@ -241,12 +243,73 @@ def resolve_label(label: str) -> FoodEntry | None:
     return None
 
 
+def _ensure_zero_shot_pipeline():
+    global _zero_shot_pipeline
+    if _zero_shot_pipeline is not None:
+        return _zero_shot_pipeline
+    try:
+        from transformers import pipeline  # type: ignore[import-not-found]
+    except ImportError:
+        return None
+    try:
+        _zero_shot_pipeline = pipeline(
+            "zero-shot-image-classification",
+            model="openai/clip-vit-large-patch14",
+        )
+    except Exception as exc:  # pragma: no cover - dependency/runtime specific
+        log.warning("zero-shot food classifier unavailable: %s", exc)
+        _zero_shot_pipeline = None
+    return _zero_shot_pipeline
+
+
+def _zero_shot_candidate_labels() -> list[str]:
+    if not _DICT:
+        load()
+    labels = sorted({e.name.strip().lower() for e in _DICT.values() if e.name.strip()})
+    return labels
+
+
+def _classify_with_zero_shot(image) -> FoodClassification | None:
+    zsc = _ensure_zero_shot_pipeline()
+    if zsc is None:
+        return None
+    candidate_labels = _zero_shot_candidate_labels()
+    if not candidate_labels:
+        return None
+    min_conf = float(TUNABLES.food_min_confidence)
+    try:
+        preds = zsc(images=image, candidate_labels=candidate_labels)
+    except Exception as exc:  # pragma: no cover - model/runtime specific
+        log.warning("zero-shot food classifier failed: %s", exc)
+        return None
+    for row in preds:
+        label = str(row.get("label", "")).strip()
+        confidence = float(row.get("score", 0.0))
+        if confidence < min_conf:
+            continue
+        entry = resolve_label(label)
+        if entry is not None:
+            return FoodClassification(
+                name=entry.name,
+                risk=entry.risk,
+                confidence=confidence,
+                gerd_score=entry.gerd_score,
+                upright_hours=entry.upright_hours,
+                advice=advice_for(entry),
+                label=label,
+            )
+    return None
+
+
 def classify(image) -> FoodClassification | None:
     """Returns classification or None if no model / low confidence / no image."""
     if image is None:
         return None
     if not _DICT:
         load()
+    zero_shot_result = _classify_with_zero_shot(image)
+    if zero_shot_result is not None:
+        return zero_shot_result
     if not _ensure_model():
         return None
 
