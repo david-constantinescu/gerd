@@ -385,29 +385,29 @@ def draw_settings(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         y += 18
 
 
-def draw_network(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    """Network screen: how to reach the dashboard + a scannable QR to open it."""
-    w, h = _wh(ctx)
-    theme.title_bar(d, "NETWORK", w)
-    ssid = ctx.get("net_ssid") or "not connected"
-    ip = ctx.get("net_ip") or "no IP"
-    host = ctx.get("net_host") or "upright.local"
-    d.text((4, 28), f"Wi-Fi: {str(ssid)[:16]}", fill=theme._C_FG)
-    d.text((4, 42), f"{str(host)[:22]}", fill=theme._C_ACCENT)
-    d.text((4, 56), f"{str(ip)[:22]}", fill=theme._C_DIM)
+def _draw_back_chip(d: ImageDraw.ImageDraw) -> None:
+    """Small back button (top-left). Press a button to leave — see manager."""
+    d.rectangle((2, 3, 20, 19), outline=theme._C_FG)
+    d.line((14, 6, 8, 11), fill=theme._C_FG)
+    d.line((8, 11, 14, 16), fill=theme._C_FG)
 
+
+def draw_network(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    """Full-screen scannable QR to open the dashboard, plus a small back chip."""
+    w, h = _wh(ctx)
     qr = ctx.get("net_qr_image")
-    if qr is not None:
-        size = min(56, h - 30)
-        qr = qr.resize((size, size), Image.NEAREST)
-        img = ctx.get("_img")
-        if img is not None:
-            img.paste(qr, (w - size - 4, 30))
-        d.text((4, h - 26), "Scan to open", fill=theme._C_DIM)
-    else:
-        d.text((4, 76), "Open in a browser:", fill=theme._C_DIM)
-        d.text((4, 90), str(ctx.get("net_url") or f"http://{host}/")[:24], fill=theme._C_FG)
-    theme.menu_row(d, h - 14, "> Done", w=w, selected=True)
+    img = ctx.get("_img")
+    if qr is not None and img is not None:
+        qw, qh = qr.size
+        img.paste(qr, (max(0, (w - qw) // 2), max(0, (h - qh) // 2)))
+        _draw_back_chip(d)
+        return
+    # Fallback when QR generation is unavailable: show the address to type.
+    host = ctx.get("net_host") or "upright.local"
+    theme.title_bar(d, "NETWORK", w)
+    d.text((4, 40), "Open in a browser:", fill=theme._C_DIM)
+    d.text((4, 56), str(ctx.get("net_url") or f"http://{host}/")[:24], fill=theme._C_FG)
+    theme.menu_row(d, h - 14, "> Back", w=w, selected=True)
 
 
 def draw_about(d: ImageDraw.ImageDraw, ctx: dict) -> None:

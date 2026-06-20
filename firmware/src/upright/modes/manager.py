@@ -436,8 +436,10 @@ class ModeManager:
         info["ssid"] = wifi.current_ssid()
         self._net_info = info
         url = info.get("url") or netinfo.dashboard_url()
+        # Size the QR to (nearly) fill the panel — biggest scannable code.
+        box = max(40, min(int(self.oled.width), int(self.oled.height)) - 8)
         try:
-            self._net_qr = netinfo.qr_image(url, scale=2, border=2)
+            self._net_qr = netinfo.qr_image_fit(url, box, border=2, error="l")
         except Exception as e:  # pragma: no cover - segno/runtime specific
             log.warning("QR render failed: %s", e)
             self._net_qr = None
