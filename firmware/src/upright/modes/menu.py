@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 
 from ..config import TUNABLES
 
@@ -20,6 +19,7 @@ def settings_items() -> list[tuple[str, str]]:
     items: list[tuple[str, str]] = [
         ("Calibrate posture", "calibrate"),
         ("Week stats", "stats"),
+        ("Network", "network"),
     ]
     if TUNABLES.demo_mode:
         items.append(("Exit demo mode", "demo_exit"))
@@ -110,7 +110,7 @@ class MenuState:
             return 2
         if self.screen == "settings":
             return len(settings_items())
-        if self.screen in ("about", "med_info", "stats"):
+        if self.screen in ("about", "med_info", "stats", "network"):
             return 1
         return 1
 
@@ -148,6 +148,8 @@ class MenuState:
             return settings_items()[self.index][1]
         if self.screen == "stats":
             return "stats_done"
+        if self.screen == "network":
+            return "network_done"
         if self.screen == "med_info":
             return "med_done"
         if self.screen == "about":

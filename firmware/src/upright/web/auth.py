@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import secrets
 from functools import wraps
-from pathlib import Path
 
 from flask import jsonify, redirect, request, session, url_for
 

@@ -10,8 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from ..config import DATA_DIR, DB_PATH, reload_tunables
-from ..config import Tunables
+from ..config import DATA_DIR, DB_PATH, Tunables, reload_tunables
 from .logger import Logger
 
 log = logging.getLogger("services.demo_seed")

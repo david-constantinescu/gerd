@@ -28,6 +28,20 @@ def test_inbox_roundtrip(tmp_path):
     db.close()
 
 
+def test_recovers_from_corrupt_db(tmp_path):
+    """A malformed database file must be quarantined and replaced, not crash."""
+    path = tmp_path / "corrupt.db"
+    path.write_bytes(b"SQLite format 3\x00" + b"\xde\xad\xbe\xef" * 256)  # junk
+    db = Logger(path=str(path))  # must not raise
+    db.boot_session()
+    db.event_now("meal", {"notes": "ok"})
+    db.flush()
+    assert len(db.recent_events(limit=5)) == 1
+    db.close()
+    # the bad file was preserved for forensics
+    assert list(tmp_path.glob("corrupt.db.corrupt-*"))
+
+
 def test_sleep_summary(tmp_path):
     db = Logger(path=str(tmp_path / "t3.db"))
     db.sleep_summary(

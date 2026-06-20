@@ -41,3 +41,30 @@ def test_settings_roundtrip(client):
     assert r.get_json()["ok"] is True
     r = client.get("/api/settings")
     assert r.get_json()["pitch_alert_deg"] == 12.0
+
+
+def test_wifi_status_public(client):
+    r = client.get("/api/wifi/status")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert "url" in body and "mdns" in body
+
+
+def test_wifi_qr_png(client):
+    r = client.get("/api/wifi/qr.png")
+    assert r.status_code == 200
+    assert r.mimetype == "image/png"
+    assert r.data[:4] == b"\x89PNG"
+
+
+def test_wifi_scan_requires_login(client):
+    # Scanning/connecting is privileged — unauthenticated must be rejected.
+    assert client.get("/api/wifi/scan").status_code == 401
+    assert client.post("/api/wifi/connect", json={"ssid": "X"}).status_code == 401
+
+
+def test_settings_page_has_network_not_hotspot(client):
+    r = client.get("/settings")
+    assert r.status_code == 200
+    assert b"Network" in r.data
+    assert b"Hotspot" not in r.data

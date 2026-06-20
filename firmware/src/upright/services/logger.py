@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 import threading
 import time
@@ -85,10 +86,50 @@ class Logger:
         self._lock = threading.Lock()
         self._buffer: list[tuple[str, tuple[Any, ...]]] = []
         self._last_flush = time.time()
-        self._conn = sqlite3.connect(self.path, check_same_thread=False, isolation_level=None)
-        self._conn.execute("PRAGMA journal_mode=WAL;")
+        self._conn = self._open_db()
         self._conn.executescript(SCHEMA)
         self._session_id: int | None = None
+
+    def _open_db(self) -> sqlite3.Connection:
+        """Open SQLite, recovering automatically from a corrupt database file.
+
+        SD-card power loss can leave ``upright.db`` malformed; rather than crash
+        on every read, quarantine the bad file and start fresh so the device
+        keeps booting. The corrupt file is preserved as a ``.corrupt-*`` backup.
+        """
+        conn = sqlite3.connect(self.path, check_same_thread=False, isolation_level=None)
+        try:
+            row = conn.execute("PRAGMA quick_check").fetchone()
+            healthy = bool(row) and row[0] == "ok"
+        except sqlite3.DatabaseError:
+            healthy = False
+        if not healthy:
+            conn.close()
+            self._quarantine_corrupt_db()
+            conn = sqlite3.connect(
+                self.path, check_same_thread=False, isolation_level=None
+            )
+        conn.execute("PRAGMA journal_mode=WAL;")
+        return conn
+
+    def _quarantine_corrupt_db(self) -> None:
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        for suffix in ("", "-wal", "-shm"):
+            src = self.path + suffix
+            if not os.path.exists(src):
+                continue
+            try:
+                if suffix == "":
+                    os.replace(src, f"{self.path}.corrupt-{stamp}")
+                else:
+                    os.remove(src)
+            except OSError as e:
+                log.error("could not quarantine %s: %s", src, e)
+        log.error(
+            "database malformed — quarantined to %s.corrupt-%s and started fresh",
+            self.path,
+            stamp,
+        )
 
     # ---- writes ----
 

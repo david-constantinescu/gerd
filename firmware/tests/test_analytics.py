@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import time
-
 from upright.services.analytics import oled_lines, week_summary
-from upright.services.demo_seed import _seed_from_json, _load_dataset
+from upright.services.demo_seed import _load_dataset, _seed_from_json
 from upright.services.logger import Logger
 
 

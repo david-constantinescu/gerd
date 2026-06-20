@@ -18,8 +18,9 @@ Raspberry Pi Zero 2 W.
   you roll onto your right side / back / front.
 - **HRV / stress** via a MAX30102 in the clip, pressed against the skin.
 - **Medication reminders** with button-press acknowledgment.
-- **Local Flask PWA** dashboard at `http://192.168.1.1`, served from the Pi's
-  own WiFi hotspot. No cloud, no internet, no app store.
+- **Local Flask PWA** dashboard reachable at `http://<hostname>.local` (mDNS)
+  on your own Wi-Fi. Add or switch networks from Settings → Network (scan +
+  connect, or scan the on-screen QR to open the dashboard). No cloud, no app store.
 
 The full subsystem layout and milestone breakdown lives in
 [`docs/BUILD.md`](docs/BUILD.md). Wiring pinout in
@@ -33,9 +34,11 @@ curl -fsSL https://raw.githubusercontent.com/david-constantinescu/gerd/main/inst
 ```
 
 This clones the repo, installs every system + Python dependency, enables I²C
-and I²S, sets up the WiFi hotspot, and installs both systemd units
+and I²S, enables mDNS (avahi) so the device is reachable at
+`http://<hostname>.local`, and installs both systemd units
 (`upright.service` for the firmware loop, `upright-web.service` for the
-Flask PWA).
+Flask PWA). Provision the first Wi-Fi network with Raspberry Pi Imager; after
+that, manage networks from the dashboard's Settings → Network page.
 
 ## Quick start (development on macOS)
 
@@ -58,7 +61,7 @@ unit tests, even though the actual hardware drivers can't run there.
 firmware/         Python package that runs on the Pi
   src/upright/   Source: HAL, FSM, services, web app
   scripts/        Per-sensor bring-up helpers
-  systemd/        Service files + hostapd/dnsmasq configs
+  systemd/        Service files (firmware loop + Flask PWA)
   tests/          pytest, runs on Mac
   data/foods.json Initial food risk dictionary
 docs/             BUILD, DEV, WIRING

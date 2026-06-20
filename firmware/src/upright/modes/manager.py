@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .. import __version__
 from ..config import (
     DISPLAY_MIN_REFRESH_SECONDS,
     DISPLAY_PITCH_REFRESH_SECONDS,
@@ -24,13 +25,12 @@ from ..events import Event, EventBus, EventType
 from ..hal import imu
 from ..hal.camera import CameraPreview
 from ..hal.display import Display
-from ..services.alerts import AlertManager
-from ..services.logger import Logger
 from ..services import analytics as analytics_service
 from ..services import demo_seed
+from ..services.alerts import AlertManager
+from ..services.logger import Logger
 from ..services.meds import MedReminders
 from ..services.sleep import SleepTracker
-from .. import __version__
 from . import ui
 from .menu import SYMPTOM_SEVERITIES, SYMPTOM_TYPES, MenuState
 from .states import State, can_transition
@@ -93,6 +93,8 @@ class ModeManager:
         self._food_preview = None
         self._camera_preview = CameraPreview()
         self._food_live_preview = None
+        self._net_info: dict = {}
+        self._net_qr = None  # cached PIL QR image for the Network screen
         self._pitch_display: float | None = None
         self._battery_low_since = 0.0
         self._lying_since: float = 0.0
@@ -409,6 +411,7 @@ class ModeManager:
             "med_info": "main",
             "settings": "main",
             "stats": "settings",
+            "network": "settings",
             "about": "main",
             "food_analysing": "food_photo",
         }
@@ -420,6 +423,24 @@ class ModeManager:
         self.menu.index = 0
         if nxt == "main":
             self.menu.open = True
+
+    def _refresh_net_info(self) -> None:
+        """Snapshot network identity + a dashboard QR for the Network screen.
+
+        Done on screen entry (not every frame) — ``wifi.current_ssid`` shells
+        out to nmcli, which is too slow to call on each repaint.
+        """
+        from ..services import netinfo, wifi
+
+        info = netinfo.status()
+        info["ssid"] = wifi.current_ssid()
+        self._net_info = info
+        url = info.get("url") or netinfo.dashboard_url()
+        try:
+            self._net_qr = netinfo.qr_image(url, scale=2, border=2)
+        except Exception as e:  # pragma: no cover - segno/runtime specific
+            log.warning("QR render failed: %s", e)
+            self._net_qr = None
 
     def _menu_action(self, action: str, now: float) -> None:
         """Confirm the highlighted menu choice."""
@@ -453,7 +474,11 @@ class ModeManager:
         elif action == "stats":
             self.menu.screen = "stats"
             self.menu.index = 0
-        elif action == "stats_done":
+        elif action == "network":
+            self._refresh_net_info()
+            self.menu.screen = "network"
+            self.menu.index = 0
+        elif action == "network_done":
             self._menu_back()
         elif action == "demo_enter":
             try:
@@ -804,8 +829,11 @@ class ModeManager:
             "med_line": med_line,
             "last_symptom_text": last_symptom_text,
             "food_upright_hours": food_upright_hours,
-            "hotspot_ssid": TUNABLES.hotspot_ssid,
-            "hotspot_ip": TUNABLES.hotspot_ip,
+            "net_ssid": self._net_info.get("ssid"),
+            "net_ip": self._net_info.get("ip"),
+            "net_host": self._net_info.get("mdns"),
+            "net_url": self._net_info.get("url"),
+            "net_qr_image": self._net_qr,
             "demo_mode": TUNABLES.demo_mode,
             "analytics_lines": analytics_lines,
             "sleep_week_avg": week.get("avg_sleep_score"),

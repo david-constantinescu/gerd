@@ -114,3 +114,13 @@ label { display: block; margin: 8px 0; }
 .toast.err { background: #da3633; }
 .web-terminal { position: relative; z-index: 1; touch-action: manipulation; }
 button, .btn, .tab { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+/* --- Network / Wi-Fi (settings) --- */
+.wifi-status { font-size: 14px; line-height: 1.6; margin-bottom: 10px; }
+.wifi-share { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.wifi-qr { width: 96px; height: 96px; image-rendering: pixelated; background: #fff; border-radius: 6px; padding: 4px; }
+.wifi-msg { font-size: 13px; color: #8b949e; }
+.wifi-list { list-style: none; padding: 0; margin: 10px 0 0; }
+.wifi-list li { margin: 4px 0; }
+.wifi-net { width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+.wifi-net .sig { color: #8b949e; font-size: 12px; }

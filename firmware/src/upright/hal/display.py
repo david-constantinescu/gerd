@@ -11,19 +11,16 @@ from typing import Any
 
 from ..config import (
     DATA_DIR,
-    I2C_ADDR_OLED,
     OLED_HEIGHT,
     OLED_WIDTH,
-    TUNABLES,
     SPI_DISPLAY_BL,
     SPI_DISPLAY_DC,
     SPI_DISPLAY_DEVICE,
     SPI_DISPLAY_HEIGHT,
-    SPI_DISPLAY_H_OFFSET,
     SPI_DISPLAY_PORT,
     SPI_DISPLAY_RST,
-    SPI_DISPLAY_V_OFFSET,
     SPI_DISPLAY_WIDTH,
+    TUNABLES,
 )
 
 log = logging.getLogger("hal.display")
@@ -345,8 +342,10 @@ def _open_spi_adafruit(cfg: dict[str, Any]) -> Any:
 
 def _open_i2c(cfg: dict[str, Any]) -> Any:
     from luma.core.interface.serial import i2c  # type: ignore[import-not-found]
-    from luma.oled.device import ssd1306  # type: ignore[import-not-found]
-    from luma.oled.device import sh1106  # type: ignore[import-not-found]
+    from luma.oled.device import (
+        sh1106,  # type: ignore[import-not-found]
+        ssd1306,  # type: ignore[import-not-found]
+    )
 
     serial = i2c(port=int(cfg["bus"]), address=int(cfg["address"]))
     w, h = int(cfg["width"]), int(cfg["height"])
@@ -355,7 +354,7 @@ def _open_i2c(cfg: dict[str, Any]) -> Any:
     return sh1106(serial, width=w, height=h)
 
 
-def _open_framebuffer(cfg: dict[str, Any]) -> "_FbWriter":
+def _open_framebuffer(cfg: dict[str, Any]) -> _FbWriter:
     return _FbWriter(int(cfg.get("device", 0)))
 
 
@@ -396,7 +395,6 @@ class _FbWriter:
         return bytes(buf)
 
     def display(self, image) -> None:
-        from PIL import Image
 
         img = image.convert("RGB").resize((self.width, self.height))
         with self._path.open("wb") as f:
@@ -616,7 +614,6 @@ class Display:
         if self.color and image.mode != "RGB":
             out = image.convert("RGB")
         if image.size != (self.width, self.height):
-            from PIL import Image
 
             out = image.resize((self.width, self.height))
         self._last_show = time.time()

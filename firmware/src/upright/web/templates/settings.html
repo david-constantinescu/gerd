@@ -47,16 +47,17 @@
 </section>
 
 <section class="card">
-  <h2>Hotspot</h2>
-  <label>Mode
-    <select data-setting="hotspot_mode">
-      <option value="always"    {{ 'selected' if tunables.hotspot_mode=='always' }}>Always on</option>
-      <option value="scheduled" {{ 'selected' if tunables.hotspot_mode=='scheduled' }}>Scheduled</option>
-      <option value="manual"    {{ 'selected' if tunables.hotspot_mode=='manual' }}>Manual</option>
-    </select>
-  </label>
-  <label>On at   <input type="time" value="{{ tunables.hotspot_schedule_on }}"  data-setting="hotspot_schedule_on" /></label>
-  <label>Off at  <input type="time" value="{{ tunables.hotspot_schedule_off }}" data-setting="hotspot_schedule_off" /></label>
+  <h2>Network</h2>
+  <div id="wifi-status" class="wifi-status">Loading…</div>
+  <div class="wifi-share">
+    <img id="wifi-qr" class="wifi-qr" alt="Scan to open the dashboard" />
+    <p class="hint">Scan to open this dashboard on any phone on the same Wi-Fi.</p>
+  </div>
+  <div class="row">
+    <button type="button" onclick="scanWifi()">Scan for networks</button>
+    <span id="wifi-msg" class="wifi-msg"></span>
+  </div>
+  <ul id="wifi-list" class="wifi-list"></ul>
 </section>
 
 <section class="card">

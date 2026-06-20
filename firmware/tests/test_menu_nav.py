@@ -1,6 +1,5 @@
 """Two-button menu navigation (no encoder)."""
 
-import time
 
 from upright.modes.menu import MAIN_ITEMS, MenuState
 

@@ -104,3 +104,59 @@ def test_classify_uses_zero_shot_image_and_candidate_labels():
     assert kwargs["images"] is fake_img
     assert "pizza" in kwargs["candidate_labels"]
     assert len(kwargs["candidate_labels"]) > 100
+
+
+def _mock_quantized_interp(raw_uint8, scale, zero_point):
+    """A mock interpreter whose output tensor is raw uint8 with quant params."""
+    mock_interp = MagicMock()
+    mock_interp.get_input_details.return_value = [
+        {"index": 0, "shape": [1, 224, 224, 3], "dtype": np.uint8}
+    ]
+    mock_interp.get_output_details.return_value = [
+        {"index": 0, "dtype": np.uint8, "quantization": (scale, zero_point)}
+    ]
+    mock_interp.get_tensor.side_effect = lambda _idx: np.array([raw_uint8])
+    return mock_interp
+
+
+def _run_classify_tflite(mock_interp):
+    fake_img = MagicMock()
+    fake_img.resize.return_value.convert.return_value = fake_img
+    labels = (
+        config.FIRMWARE_ROOT / "models" / "food_mobilenetv2_quant.labels.txt"
+    ).read_text().splitlines()
+    with patch.object(foods, "_ensure_model", return_value=True):
+        foods._interpreter = mock_interp
+        foods._input_details = mock_interp.get_input_details()
+        foods._output_details = mock_interp.get_output_details()
+        foods._labels = labels
+        result = foods.classify(fake_img)
+    foods._interpreter = None
+    return result
+
+
+def test_classify_dequantizes_uint8_output():
+    """Quantized uint8 output must be dequantized into a real probability.
+
+    Regression: previously raw uint8 scores were softmaxed, collapsing the top
+    class to ~1.0 confidence regardless of the model's true certainty.
+    """
+    foods.reload(config.FOODS_PATH)
+    raw = np.zeros(101, dtype=np.uint8)
+    raw[76] = 200  # pizza (alphabetical Food-101 index) → 200/255 ≈ 0.78
+    raw[5] = 55    # filler mass so the distribution sums to 255 (≈1.0)
+    result = _run_classify_tflite(_mock_quantized_interp(raw, 1 / 255.0, 0))
+    assert result is not None
+    assert result.name == "Pizza"
+    assert 0.70 <= result.confidence <= 0.85  # genuine prob, not bogus ~1.0
+
+
+def test_classify_rejects_low_confidence_quantized():
+    """A weak quantized prediction must fall below food_min_confidence → None."""
+    foods.reload(config.FOODS_PATH)
+    raw = np.zeros(101, dtype=np.uint8)
+    raw[76] = 100  # pizza → 100/255 ≈ 0.39, below the 0.6 threshold
+    raw[5] = 80
+    raw[7] = 75    # total = 255; no class clears 0.6
+    result = _run_classify_tflite(_mock_quantized_interp(raw, 1 / 255.0, 0))
+    assert result is None

@@ -7,8 +7,8 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 
 from . import menu as menu_mod
-from .menu import settings_items
 from . import ui_theme as theme
+from .menu import settings_items
 from .states import State
 
 _SYMPTOM_TYPES = menu_mod.SYMPTOM_TYPES
@@ -120,7 +120,6 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     now = datetime.now().strftime("%H:%M")
     date = ctx.get("date_text", "")
     wear = (ctx.get("wear_side", "left") or "left")[:5]
-    bpm = ctx.get("bpm", "--")
     posture = ctx.get("posture_pct", 0.0)
     pitch = ctx.get("pitch", 0.0)
     roll = ctx.get("roll", 0.0)
@@ -384,10 +383,31 @@ def draw_settings(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         prefix = "> " if i == idx else "  "
         theme.menu_row(d, y, f"{prefix}{label}", w=w, selected=(i == idx))
         y += 18
-    ssid = ctx.get("hotspot_ssid", "UpRight-AP")
-    ip = ctx.get("hotspot_ip", "192.168.1.1")
-    d.text((4, min(h - 26, y + 2)), f"WiFi {ssid}", fill=theme._C_DIM)
-    d.text((4, min(h - 14, y + 14)), ip, fill=theme._C_ACCENT)
+
+
+def draw_network(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    """Network screen: how to reach the dashboard + a scannable QR to open it."""
+    w, h = _wh(ctx)
+    theme.title_bar(d, "NETWORK", w)
+    ssid = ctx.get("net_ssid") or "not connected"
+    ip = ctx.get("net_ip") or "no IP"
+    host = ctx.get("net_host") or "upright.local"
+    d.text((4, 28), f"Wi-Fi: {str(ssid)[:16]}", fill=theme._C_FG)
+    d.text((4, 42), f"{str(host)[:22]}", fill=theme._C_ACCENT)
+    d.text((4, 56), f"{str(ip)[:22]}", fill=theme._C_DIM)
+
+    qr = ctx.get("net_qr_image")
+    if qr is not None:
+        size = min(56, h - 30)
+        qr = qr.resize((size, size), Image.NEAREST)
+        img = ctx.get("_img")
+        if img is not None:
+            img.paste(qr, (w - size - 4, 30))
+        d.text((4, h - 26), "Scan to open", fill=theme._C_DIM)
+    else:
+        d.text((4, 76), "Open in a browser:", fill=theme._C_DIM)
+        d.text((4, 90), str(ctx.get("net_url") or f"http://{host}/")[:24], fill=theme._C_FG)
+    theme.menu_row(d, h - 14, "> Done", w=w, selected=True)
 
 
 def draw_about(d: ImageDraw.ImageDraw, ctx: dict) -> None:
@@ -497,6 +517,7 @@ _MENU_DRAWERS = {
     "med_info": draw_med_info,
     "settings": draw_settings,
     "stats": draw_analytics,
+    "network": draw_network,
     "about": draw_about,
     "flash": draw_flash,
 }
@@ -506,7 +527,7 @@ def render(state: State, ctx: dict, oled) -> None:
     w = int(getattr(oled, "width", 160))
     h = int(getattr(oled, "height", 128))
     img, d = theme.new_frame(w, h)
-    draw_ctx = {**ctx, "_w": w, "_h": h}
+    draw_ctx = {**ctx, "_w": w, "_h": h, "_img": img}
 
     if draw_ctx.get("display_demo"):
         theme.title_bar(d, "UPRIGHT", w)

@@ -15,7 +15,6 @@ import logging
 import time
 from datetime import datetime, timedelta
 
-from ..config import TUNABLES
 from ..events import Event, EventBus, EventType
 from . import demo_seed
 from .logger import Logger

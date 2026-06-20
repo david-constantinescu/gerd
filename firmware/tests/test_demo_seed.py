@@ -6,7 +6,6 @@ from pathlib import Path
 
 from upright.services import demo_seed
 from upright.services.demo_seed import (
-    DEMO_SESSION_PATH,
     enter_demo,
     exit_demo,
     is_demo_mode,

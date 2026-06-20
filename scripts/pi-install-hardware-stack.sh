@@ -37,7 +37,7 @@ apt-get install -y --no-install-recommends \
   v4l-utils fswebcam \
   alsa-utils \
   gpiod \
-  hostapd dnsmasq iptables \
+  avahi-daemon network-manager \
   build-essential \
   libjpeg62-turbo-dev zlib1g-dev libopenjp2-7 \
   2>&1 | tail -5
@@ -162,5 +162,10 @@ EOF
   systemctl enable upright upright-web 2>/dev/null || true
 fi
 
+# mDNS + NetworkManager so the device is reachable at <hostname>.local on the LAN
+systemctl enable --now avahi-daemon 2>/dev/null || true
+systemctl enable --now NetworkManager 2>/dev/null || true
+
 log "done — reboot recommended: sudo reboot"
+log "Dashboard: http://$(hostname).local  (or the device IP from: hostname -I)"
 log "If using an SPI TFT: edit $OVERLAY_FILE, uncomment ONE overlay, reboot."

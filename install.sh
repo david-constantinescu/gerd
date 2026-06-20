@@ -6,12 +6,15 @@
 #   curl -fsSL https://raw.githubusercontent.com/david-constantinescu/gerd/main/install.sh | bash
 #
 # What this does:
-#   1. installs system packages (i2c-tools, hostapd, dnsmasq, fswebcam, etc.)
+#   1. installs system packages (i2c-tools, fswebcam, avahi-daemon, etc.)
 #   2. enables I²C and I²S in /boot/config.txt
 #   3. clones or updates the repo into /home/$USER/upright
 #   4. creates a venv, installs the Python package with Pi extras
-#   5. lays down hostapd + dnsmasq configs for the UpRight-AP hotspot
+#   5. enables mDNS (avahi) so the device is reachable at <hostname>.local
 #   6. installs and enables the two systemd units (upright + upright-web)
+#
+# Wi-Fi: provision the first network with Raspberry Pi Imager (or raspi-config);
+# afterwards add/switch networks from the dashboard → Settings → Network.
 #
 # Idempotent — safe to re-run after a `git pull` to pick up updates.
 
@@ -69,7 +72,7 @@ else
   apt-get install -y --no-install-recommends \
     python3 python3-venv python3-pip python3-dev \
     python3-pil python3-numpy python3-smbus2 python3-spidev python3-rpi-lgpio python3-luma.oled \
-    i2c-tools v4l-utils alsa-utils fswebcam hostapd dnsmasq iptables build-essential
+    i2c-tools v4l-utils alsa-utils fswebcam avahi-daemon network-manager build-essential
 fi
 
 if [[ ${HW_STACK_RAN:-0} -eq 0 ]]; then
@@ -85,44 +88,13 @@ if [[ ${HW_STACK_RAN:-0} -eq 0 ]]; then
     }
 fi
 
-# -------------------------------------------------- 4. hotspot configs
-log "writing hostapd + dnsmasq configs for UpRight-AP"
-cat > /etc/hostapd/hostapd.conf <<EOF
-interface=wlan0
-driver=nl80211
-ssid=UpRight-AP
-hw_mode=g
-channel=7
-wmm_enabled=0
-macaddr_acl=0
-auth_algs=1
-ignore_broadcast_ssid=0
-wpa=2
-wpa_passphrase=upright123
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=TKIP
-rsn_pairwise=CCMP
-EOF
-sed -i 's|#DAEMON_CONF=.*|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd 2>/dev/null || true
-
-cat > /etc/dnsmasq.d/upright.conf <<'EOF'
-interface=wlan0
-dhcp-range=192.168.1.50,192.168.1.150,255.255.255.0,24h
-address=/#/192.168.1.1
-EOF
-
-# Static IP for wlan0
-if ! grep -q "interface wlan0" /etc/dhcpcd.conf 2>/dev/null; then
-  cat >> /etc/dhcpcd.conf <<'EOF'
-
-# UpRight hotspot
-interface wlan0
-static ip_address=192.168.1.1/24
-nohook wpa_supplicant
-EOF
-fi
-
-systemctl unmask hostapd 2>/dev/null || true
+# -------------------------------------------------- 4. local-network access (mDNS)
+# The dashboard binds 0.0.0.0:80 and is reachable at http://<hostname>.local
+# once avahi advertises it. Networks are managed by NetworkManager (Bookworm
+# default) — add/switch Wi-Fi from the dashboard → Settings → Network.
+log "enabling mDNS (avahi) + NetworkManager"
+systemctl enable --now avahi-daemon 2>/dev/null || warn "avahi-daemon not enabled (install it: apt install avahi-daemon)"
+systemctl enable --now NetworkManager 2>/dev/null || true
 
 # -------------------------------------------------- 5. systemd units (if hardware stack did not already install them)
 if [[ ${HW_STACK_RAN:-0} -eq 0 ]]; then
@@ -147,7 +119,8 @@ log "done!"
 log ""
 log "Next steps:"
 log "  • reboot once so I²C / I²S come up: sudo reboot"
-log "  • join 'UpRight-AP' wifi (password: upright123)"
-log "  • open http://192.168.1.1 in your phone browser"
+log "  • on the same Wi-Fi, open  http://$(hostname).local  in any browser"
+log "    (or use the device's IP — check with: hostname -I)"
+log "  • add/switch Wi-Fi from the dashboard → Settings → Network"
 log "  • remote access: see reference docs/TAILSCALE.md (optional)"
 log "  • follow logs:  journalctl -u upright -f"

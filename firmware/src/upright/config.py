@@ -1,7 +1,7 @@
 """Central configuration: pins, addresses, thresholds, file paths.
 
 Values can be overridden at runtime by ``data/config.json`` (hot-reloaded by
-``services.hotspot`` via watchdog when running on the Pi).
+``services.boot`` / the web settings page when running on the Pi).
 """
 
 from __future__ import annotations
@@ -119,14 +119,6 @@ class Tunables:
 
     # Camera / TFLite
     food_min_confidence: float = 0.60
-
-    # Hotspot
-    hotspot_ssid: str = "UpRight-AP"
-    hotspot_password: str = "upright123"  # change on first boot
-    hotspot_ip: str = "192.168.1.1"
-    hotspot_schedule_on: str = "07:00"
-    hotspot_schedule_off: str = "23:00"
-    hotspot_mode: str = "always"  # always | scheduled | manual
 
     # UI
     language: str = "en"

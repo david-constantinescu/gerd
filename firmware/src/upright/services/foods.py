@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -104,8 +105,13 @@ def load(path: Path | None = None) -> dict[str, FoodEntry]:
 
 def reload(path: Path | None = None) -> dict[str, FoodEntry]:
     """Reload dictionary from disk (e.g. after web API edit)."""
-    global _interpreter, _zero_shot_pipeline
+    global _interpreter, _input_details, _output_details, _labels, _zero_shot_pipeline
+    # Reset *all* model state, not just the interpreter — leaving stale tensor
+    # details/labels behind could mis-map outputs after a model swap.
     _interpreter = None
+    _input_details = None
+    _output_details = None
+    _labels = []
     _zero_shot_pipeline = None
     return load(path)
 
@@ -189,14 +195,22 @@ _input_details: list[Any] | None = None
 _output_details: list[Any] | None = None
 _labels: list[str] = []
 _zero_shot_pipeline = None
+_warned_no_model = False
 
 
 def _ensure_model() -> bool:
-    global _interpreter, _input_details, _output_details, _labels
+    global _interpreter, _input_details, _output_details, _labels, _warned_no_model
     if _interpreter is not None:
         return True
     if not TFLITE_MODEL_PATH.exists():
-        log.debug("no TFLite model at %s", TFLITE_MODEL_PATH)
+        if not _warned_no_model:
+            log.warning(
+                "food model missing at %s — TFLite path disabled. "
+                "Deploy a Food-101 quantized TFLite model (labels: %s) to enable it.",
+                TFLITE_MODEL_PATH,
+                TFLITE_MODEL_PATH.with_suffix(".labels.txt").name,
+            )
+            _warned_no_model = True
         return False
     try:
         from tflite_runtime.interpreter import Interpreter  # type: ignore[import-not-found]
@@ -243,10 +257,26 @@ def resolve_label(label: str) -> FoodEntry | None:
     return None
 
 
+def _have_memory_for_clip(min_gb: float = 2.0) -> bool:
+    """CLIP-ViT-Large needs gigabytes of RAM — never attempt it on a Pi Zero 2 W
+    (512 MB) where it would OOM/hang the food-photo flow. Skip unless the host
+    has enough memory (or the operator forces it on)."""
+    if os.environ.get("UPRIGHT_FORCE_CLIP") == "1":
+        return True
+    try:
+        total = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+        return total >= min_gb * (1024**3)
+    except (ValueError, OSError, AttributeError):
+        return False
+
+
 def _ensure_zero_shot_pipeline():
     global _zero_shot_pipeline
     if _zero_shot_pipeline is not None:
         return _zero_shot_pipeline
+    if not _have_memory_for_clip():
+        log.info("skipping CLIP zero-shot classifier — insufficient RAM for this device")
+        return None
     try:
         from transformers import pipeline  # type: ignore[import-not-found]
     except ImportError:
@@ -325,9 +355,23 @@ def classify(image) -> FoodClassification | None:
     batch = np.expand_dims(arr, 0)
     _interpreter.set_tensor(inp["index"], batch)  # type: ignore[union-attr]
     _interpreter.invoke()  # type: ignore[union-attr]
-    out = _interpreter.get_tensor(_output_details[0]["index"])[0]  # type: ignore[index, union-attr]
+    out_detail = _output_details[0]  # type: ignore[index]
+    out = _interpreter.get_tensor(out_detail["index"])[0]  # type: ignore[union-attr]
 
-    flat = np.asarray(out, dtype=np.float32).reshape(-1)
+    raw = np.asarray(out).reshape(-1)
+    # Dequantize integer outputs from a quantized model using the tensor's
+    # (scale, zero_point) params. Without this, raw uint8/int8 scores (0–255)
+    # skip straight to the softmax branch below and collapse to ~1.0 for the
+    # top class — defeating the food_min_confidence threshold and accepting
+    # low-quality predictions as if they were certain.
+    if raw.dtype in (np.uint8, np.int8):
+        q = out_detail.get("quantization") if hasattr(out_detail, "get") else None
+        if isinstance(q, (tuple, list)) and len(q) == 2 and float(q[0]):
+            raw = (raw.astype(np.float32) - int(q[1])) * float(q[0])
+        else:
+            raw = raw.astype(np.float32) / 255.0
+
+    flat = np.asarray(raw, dtype=np.float32).reshape(-1)
     if flat.max() > 1.5 or flat.min() < 0:
         x = flat - flat.max()
         exp = np.exp(x)

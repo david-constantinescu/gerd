@@ -1,4 +1,4 @@
-"""Flask PWA served at http://192.168.1.1.
+"""Flask PWA served on the LAN at http://<hostname>.local (mDNS) / port 80.
 
 Runs as its own systemd unit (``upright-web.service``) so a webapp crash
 cannot kill the firmware loop. The two processes share only the SQLite file
@@ -30,6 +30,10 @@ from flask import (
 )
 
 from ..config import CONFIG_PATH, DB_PATH, FOODS_PATH, TUNABLES, Tunables, reload_tunables
+from ..services import analytics as analytics_service
+from ..services import demo_seed
+from ..services import foods as foods_service
+from ..services.logger import Logger
 from .auth import (
     is_authenticated,
     login_user,
@@ -38,10 +42,6 @@ from .auth import (
     session_secret,
     verify_credentials,
 )
-from ..services import analytics as analytics_service
-from ..services import demo_seed
-from ..services import foods as foods_service
-from ..services.logger import Logger
 from .shell import PtyShell
 
 app = Flask(
@@ -341,6 +341,50 @@ def api_settings():
         db.close()
         return jsonify({"ok": True})
     return jsonify(asdict(TUNABLES))
+
+
+@app.get("/api/wifi/status")
+def api_wifi_status():
+    """Current network identity — how to reach this device on the LAN."""
+    from ..services import netinfo
+    from ..services import wifi as wifi_service
+
+    info = netinfo.status()
+    info["ssid"] = wifi_service.current_ssid()
+    info["manageable"] = wifi_service.is_available()
+    return jsonify(info)
+
+
+@app.get("/api/wifi/qr.png")
+def api_wifi_qr():
+    """QR code of the dashboard URL — scan to open from any phone on the LAN."""
+    from ..services import netinfo
+
+    url = request.args.get("url") or netinfo.dashboard_url()
+    png = netinfo.qr_png_bytes(url, scale=6, border=3)
+    if png is None:
+        return ("QR unavailable", 503)
+    return Response(png, mimetype="image/png", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/wifi/scan")
+@require_login
+def api_wifi_scan():
+    from ..services import wifi as wifi_service
+
+    return jsonify({"networks": wifi_service.scan(), "available": wifi_service.is_available()})
+
+
+@app.post("/api/wifi/connect")
+@require_login
+def api_wifi_connect():
+    from ..services import wifi as wifi_service
+
+    data = request.get_json(silent=True) or {}
+    ok, msg = wifi_service.connect(
+        (data.get("ssid") or "").strip(), data.get("password") or None
+    )
+    return jsonify({"ok": ok, "message": msg}), (200 if ok else 400)
 
 
 @app.route("/api/analytics")

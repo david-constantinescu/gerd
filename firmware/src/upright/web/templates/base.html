@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0d1117" />
   <link rel="manifest" href="/static/manifest.json" />
   <link rel="apple-touch-icon" href="/static/icon-192.png" />
-  <link rel="stylesheet" href="/static/style.css?v=4" />
+  <link rel="stylesheet" href="/static/style.css?v=5" />
   <title>UpRight</title>
 </head>
 <body>
@@ -29,11 +29,11 @@
     <a href="/control" class="tab {{ 'active' if active=='control' }}">Control</a>
   </nav>
 
-  <script src="/static/app.js?v=4"></script>
+  <script src="/static/app.js?v=5"></script>
   {% block extra_scripts %}{% endblock %}
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/static/sw.js?v=4").catch(function () {});
+      navigator.serviceWorker.register("/static/sw.js?v=5").catch(function () {});
     }
   </script>
 </body>

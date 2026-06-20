@@ -1,5 +1,5 @@
 // Offline shell — network-first for JS/CSS/HTML so UI updates always land.
-const CACHE = "upright-v3";
+const CACHE = "upright-v4";
 
 const SHELL = [
   "/",

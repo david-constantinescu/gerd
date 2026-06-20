@@ -1,6 +1,6 @@
 // UpRight — single tiny frontend script. Plain fetch polling, no build step.
 
-const APP_VER = "4";
+const APP_VER = "5";
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
@@ -370,6 +370,75 @@ async function addMed() {
   loadMeds();
 }
 
+async function initWifi() {
+  const statusEl = $("#wifi-status");
+  if (!statusEl) return;
+  try {
+    const s = await j("/api/wifi/status");
+    const url = s.url || `http://${s.mdns || "upright.local"}/`;
+    statusEl.innerHTML =
+      `Connected to <b>${s.ssid || "—"}</b><br>` +
+      `Address: <b>${url}</b><br>` +
+      `IP: <b>${s.ip || "—"}</b>` +
+      (s.manageable ? "" : "<br><i>Wi-Fi switching not available on this host</i>");
+    const qr = $("#wifi-qr");
+    if (qr) qr.src = "/api/wifi/qr.png?t=" + Date.now();
+  } catch (_) {
+    statusEl.textContent = "network status unavailable";
+  }
+}
+
+async function scanWifi() {
+  const msg = $("#wifi-msg");
+  const list = $("#wifi-list");
+  if (!list) return;
+  msg.textContent = "scanning…";
+  const r = await fetch("/api/wifi/scan", { credentials: "same-origin" });
+  if (r.status === 401) {
+    msg.innerHTML = 'Please <a href="/login?next=/settings">log in</a> to manage Wi-Fi.';
+    return;
+  }
+  const data = await r.json().catch(() => ({}));
+  msg.textContent = data.available ? "" : "Wi-Fi control not available on this device.";
+  const nets = data.networks || [];
+  list.innerHTML =
+    nets
+      .map(
+        (n) =>
+          `<li><button type="button" class="wifi-net" data-ssid="${n.ssid}" data-secure="${n.secure}">
+             ${n.secure ? "🔒" : "📶"} ${n.ssid} <span class="sig">${n.signal}%</span>
+           </button></li>`
+      )
+      .join("") || "<li>no networks found</li>";
+  list.querySelectorAll(".wifi-net").forEach((b) =>
+    b.addEventListener("click", () => connectWifi(b.dataset.ssid, b.dataset.secure === "true"))
+  );
+}
+
+async function connectWifi(ssid, secure) {
+  const msg = $("#wifi-msg");
+  let password = null;
+  if (secure) {
+    password = prompt(`Wi-Fi password for "${ssid}":`);
+    if (password === null) return;
+  }
+  msg.textContent = `connecting to ${ssid}…`;
+  const r = await fetch("/api/wifi/connect", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ssid, password }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (data.ok) {
+    showToast(`Connected to ${ssid}`);
+    msg.textContent = `Connected to ${ssid} ✓`;
+    setTimeout(initWifi, 2000);
+  } else {
+    msg.textContent = `Failed: ${data.message || "HTTP " + r.status}`;
+  }
+}
+
 function boot() {
   bindClickDelegation();
   refreshLive();
@@ -377,6 +446,7 @@ function boot() {
   loadSleep();
   loadReports();
   initSettings();
+  initWifi();
   setInterval(refreshLive, 2000);
 }
 
@@ -392,3 +462,5 @@ window.logWater = logWater;
 window.addFood = addFood;
 window.addMed = addMed;
 window.delMed = delMed;
+window.scanWifi = scanWifi;
+window.connectWifi = connectWifi;
