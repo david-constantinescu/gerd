@@ -1,0 +1,4 @@
+# Simulator runtime sandbox (copied data, fresh/quarantined DBs, caches)
+.simdata/
+__pycache__/
+*.pyc

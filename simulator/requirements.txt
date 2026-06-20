@@ -1,0 +1,5 @@
+# The simulator only needs what the firmware already depends on.
+# Easiest: just use the firmware venv (../firmware/.venv) which has these.
+flask>=3.0
+pillow>=10.0
+numpy>=1.24
