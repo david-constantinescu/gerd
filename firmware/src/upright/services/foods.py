@@ -27,11 +27,42 @@ VALID_RISKS = frozenset({"LOW", "MEDIUM", "HIGH"})
 _DEFAULT_HOURS = {"LOW": 1.5, "MEDIUM": 2.25, "HIGH": 3.0}
 _DEFAULT_SCORE = {"LOW": 22, "MEDIUM": 52, "HIGH": 84}
 
+# Kept ASCII-only: the OLED uses PIL's built-in bitmap font, which renders an
+# em dash (and accented letters) as a "tofu" box.
 _ADVICE = {
-    "LOW": "Good choice — low reflux risk",
-    "MEDIUM": "Moderate risk — stay upright",
-    "HIGH": "High risk — stay upright longer",
+    "LOW": "Low reflux risk",
+    "MEDIUM": "Moderate reflux risk",
+    "HIGH": "High reflux risk",
 }
+
+# GERD dietary guidance (well-documented reflux triggers vs reflux-friendly
+# foods). Used to estimate a risk tier for any food the model recognizes that
+# isn't in foods.json, so a recognized dish always yields useful advice.
+_HIGH_RISK_KW = (
+    "fried", "fries", "deep-fried", "tempura", "katsu", "schnitzel", "nugget",
+    "pizza", "burger", "cheeseburger", "cheese", "nacho", "quesadilla",
+    "bacon", "sausage", "salami", "pepperoni", "chorizo", "pancetta",
+    "rib", "brisket", "wing", "fatty", "lard", "gravy", "butter", "cream",
+    "alfredo", "carbonara", "poutine", "chocolate", "cocoa", "fudge",
+    "brownie", "cake", "pie", "donut", "doughnut", "pastry", "croissant",
+    "churro", "tart", "cheesecake", "ice cream", "custard", "caramel",
+    "curry", "chili", "spicy", "jalapeno", "salsa", "ketchup", "bolognese",
+    "tomato", "marinara", "citrus", "orange", "lemon", "lime", "grapefruit",
+    "coffee", "espresso", "latte", "cappuccino", "mocha", "wine", "beer",
+    "cocktail", "margarita", "whiskey", "vodka", "rum", "sangria", "mint",
+    "peppermint", "onion", "garlic", "bbq", "barbecue", "taco", "burrito",
+    "enchilada", "kebab", "hot dog",
+)
+_LOW_RISK_KW = (
+    "oatmeal", "porridge", "rice", "quinoa", "couscous", "barley", "millet",
+    "banana", "melon", "cantaloupe", "honeydew", "pear", "papaya", "lettuce",
+    "spinach", "kale", "cucumber", "celery", "broccoli", "cauliflower",
+    "carrot", "green bean", "pea", "zucchini", "asparagus", "boiled",
+    "steamed", "grilled", "poached", "toast", "cracker", "pretzel",
+    "rice cake", "tofu", "lentil", "chickpea", "edamame", "ginger", "fennel",
+    "herbal tea", "chamomile", "yogurt", "oat milk", "almond milk", "apple",
+    "berry", "blueberry", "strawberry", "raspberry",
+)
 
 
 @dataclass(frozen=True)
@@ -139,13 +170,8 @@ def lookup(name: str) -> FoodEntry | None:
 
 
 def advice_for(entry: FoodEntry) -> str:
-    base = _ADVICE.get(entry.risk, "Stay upright after eating")
-    h = entry.upright_hours
-    if entry.risk == "HIGH":
-        return f"{base} ({h:.1f}h)"
-    if entry.risk == "MEDIUM":
-        return f"{base} ({h:.1f}h)"
-    return base
+    # Upright hours are shown on their own line, so keep advice short + ASCII.
+    return _ADVICE.get(entry.risk, "Stay upright after eating")
 
 
 def upsert(
@@ -198,6 +224,25 @@ _zero_shot_pipeline = None
 _warned_no_model = False
 
 
+def _load_interpreter_cls():
+    """Return a TFLite ``Interpreter`` class from whichever runtime is present.
+
+    ``ai-edge-litert`` is the maintained successor to ``tflite-runtime`` and is
+    the only one with prebuilt wheels for modern macOS (used by the simulator)
+    and recent Pythons; we still fall back to the classic names.
+    """
+    for mod, attr in (
+        ("ai_edge_litert.interpreter", "Interpreter"),
+        ("tflite_runtime.interpreter", "Interpreter"),
+        ("tensorflow.lite", "Interpreter"),
+    ):
+        try:
+            return getattr(__import__(mod, fromlist=[attr]), attr)
+        except (ImportError, AttributeError):
+            continue
+    return None
+
+
 def _ensure_model() -> bool:
     global _interpreter, _input_details, _output_details, _labels, _warned_no_model
     if _interpreter is not None:
@@ -212,14 +257,13 @@ def _ensure_model() -> bool:
             )
             _warned_no_model = True
         return False
-    try:
-        from tflite_runtime.interpreter import Interpreter  # type: ignore[import-not-found]
-    except ImportError:
-        try:
-            from tensorflow.lite import Interpreter  # type: ignore[import-not-found]
-        except ImportError:
-            log.warning("no tflite runtime — food vision disabled")
-            return False
+    Interpreter = _load_interpreter_cls()
+    if Interpreter is None:
+        log.warning(
+            "no TFLite runtime — food vision disabled. "
+            "Install one of: ai-edge-litert, tflite-runtime, tensorflow."
+        )
+        return False
     _interpreter = Interpreter(model_path=str(TFLITE_MODEL_PATH))
     _interpreter.allocate_tensors()
     _input_details = _interpreter.get_input_details()
@@ -243,18 +287,76 @@ def _label_at(idx: int) -> str:
     return f"class_{idx}"
 
 
+def _risk_from_keywords(label: str) -> str:
+    """Estimate a GERD risk tier from food-name keywords (trigger vs friendly)."""
+    s = _norm(label)
+    if any(kw in s for kw in _HIGH_RISK_KW):
+        return "HIGH"
+    if any(kw in s for kw in _LOW_RISK_KW):
+        return "LOW"
+    return "MEDIUM"
+
+
+def _entry_named(label: str, src: FoodEntry | None) -> FoodEntry:
+    """A FoodEntry that keeps the *detected* dish name but takes risk data from
+    ``src`` if we matched a known food, else from keyword estimation."""
+    if src is not None:
+        return FoodEntry(
+            name=label.strip(),
+            risk=src.risk,
+            upright_hours=src.upright_hours,
+            gerd_score=src.gerd_score,
+        )
+    risk = _risk_from_keywords(label)
+    return FoodEntry(
+        name=label.strip(),
+        risk=risk,
+        upright_hours=_DEFAULT_HOURS[risk],
+        gerd_score=_DEFAULT_SCORE[risk],
+    )
+
+
 def resolve_label(label: str) -> FoodEntry | None:
-    """Map a model class name to a food entry (aliases + Food-101 ids)."""
+    """Map a model class name to a food entry.
+
+    Order: the model's "not food" class is rejected; then exact name/alias,
+    then a numeric-prefix strip, then the longest known food name appearing as
+    a whole word in the label, and finally a keyword-based risk estimate so any
+    recognized dish still produces useful advice. The returned entry always
+    keeps the *detected* dish name for display.
+    """
     if not _DICT:
         load()
-    entry = lookup(label)
-    if entry is not None:
-        return entry
-    # Strip numeric prefixes sometimes present in export files
-    cleaned = re.sub(r"^\d+\s+", "", label.strip())
-    if cleaned != label:
-        return lookup(cleaned)
-    return None
+    raw = label.strip()
+    if _norm(raw) in ("", "background", "__background__"):
+        return None
+
+    hit = lookup(raw)
+    if hit is not None:
+        return hit  # exact/alias match — curated name is already correct
+
+    cleaned = re.sub(r"^\d+\s+", "", raw)
+    if cleaned != raw:
+        hit = lookup(cleaned)
+        if hit is not None:
+            return hit
+
+    # Longest known food name that appears as a whole word inside the label,
+    # e.g. "New York-style pizza" -> "pizza", "Chicken fried steak" -> "steak".
+    nl = _norm(raw)
+    best_key: str | None = None
+    for key in _DICT:
+        if len(key) < 3:
+            continue
+        if re.search(rf"\b{re.escape(key)}\b", nl) and (
+            best_key is None or len(key) > len(best_key)
+        ):
+            best_key = key
+    if best_key is not None:
+        return _entry_named(raw, _DICT[best_key])
+
+    # Recognized food the dictionary doesn't list — estimate risk from keywords.
+    return _entry_named(raw, None)
 
 
 def _have_memory_for_clip(min_gb: float = 2.0) -> bool:

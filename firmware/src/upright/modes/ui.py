@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from datetime import datetime
 
 from PIL import Image, ImageDraw
@@ -18,6 +19,15 @@ _MAIN_ITEMS = menu_mod.MAIN_ITEMS
 
 def _wh(ctx: dict) -> tuple[int, int]:
     return int(ctx.get("_w", 160)), int(ctx.get("_h", 128))
+
+
+def _ascii(s: object) -> str:
+    """Fold to ASCII for the OLED's built-in bitmap font (no accents / em dash).
+
+    Model labels can carry accents (e.g. "Rösti") and risk advice used em
+    dashes — both render as a blank "tofu" box otherwise."""
+    text = str(s).replace("—", "-").replace("–", "-").replace("’", "'")
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
 
 
 def _posture_status(pct: float, alert: bool) -> str:
@@ -263,11 +273,11 @@ def draw_food_preview(img: Image.Image, d: ImageDraw.ImageDraw, ctx: dict) -> No
 
 def draw_food_result(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
-    name = (ctx.get("name", "?") or "?")[:16]
+    name = _ascii(ctx.get("name", "?") or "?")[:16]
     risk = ctx.get("risk", "?")
     score = int(ctx.get("gerd_score", 0) or 0)
     hours = float(ctx.get("upright_hours", 0) or 0)
-    advice = (ctx.get("advice", "") or "")[:22]
+    advice = _ascii(ctx.get("advice", "") or "")[:22]
     theme.title_bar(d, "FOOD ANALYSIS", w)
     d.text((4, 26), name, fill=theme._C_FG)
     d.text((4, 42), f"{risk}  score {score}/100", fill=theme._C_ACCENT)

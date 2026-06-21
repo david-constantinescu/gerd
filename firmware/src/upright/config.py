@@ -117,8 +117,11 @@ class Tunables:
     sleep_nudge_gap_seconds: float = 300.0
     wear_side: str = "left"  # left | right | center
 
-    # Camera / TFLite
-    food_min_confidence: float = 0.60
+    # Camera / TFLite. The bundled AIY Food V1 model has 2024 fine-grained
+    # classes, so a correct top-1 for a real plate is typically 0.3–0.85 while
+    # non-food frames sit well below 0.15 — 0.20 accepts real food and rejects
+    # the empty-viewfinder/garbage case.
+    food_min_confidence: float = 0.20
 
     # UI
     language: str = "en"

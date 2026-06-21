@@ -37,3 +37,5 @@ firmware/models/*.tflite
 firmware/audio/*.wav
 !firmware/audio/.gitkeep
 !firmware/models/.gitkeep
+# …except the bundled food classifier (real quantized AIY Food V1, ~21 MB).
+!firmware/models/food_mobilenetv2_quant.tflite

@@ -22,13 +22,7 @@
   "sleep_max_nudges": 3,
   "sleep_nudge_gap_seconds": 300.0,
   "wear_side": "left",
-  "food_min_confidence": 0.6,
-  "hotspot_ssid": "UpRight-AP",
-  "hotspot_password": "upright123",
-  "hotspot_ip": "192.168.1.1",
-  "hotspot_schedule_on": "07:00",
-  "hotspot_schedule_off": "23:00",
-  "hotspot_mode": "always",
+  "food_min_confidence": 0.2,
   "language": "en",
-  "demo_mode": true
+  "demo_mode": false
 }

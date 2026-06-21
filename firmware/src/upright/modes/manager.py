@@ -623,11 +623,11 @@ class ModeManager:
         result = foods.classify(img) if img is not None else None
         if result is None:
             self.ctx.food_result = {
-                "name": "unknown",
+                "name": "Not recognized",
                 "risk": "?",
                 "gerd_score": 0,
                 "upright_hours": TUNABLES.post_meal_default_hours,
-                "advice": "Not recognized — use phone log",
+                "advice": "Retake or log on phone",
             }
         else:
             self.ctx.food_result = {
