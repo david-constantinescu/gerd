@@ -57,8 +57,17 @@ def test_wifi_qr_png(client):
     assert r.data[:4] == b"\x89PNG"
 
 
-def test_wifi_scan_requires_login(client):
-    # Scanning/connecting is privileged — unauthenticated must be rejected.
+def test_wifi_open_during_setup(client):
+    # First-time setup (not yet connected to any network): scan/connect are open
+    # so the user can provision Wi-Fi without an account.
+    assert client.get("/api/wifi/scan").status_code == 200
+
+
+def test_wifi_requires_login_when_connected(client, monkeypatch):
+    # Once on a real network, changing Wi-Fi needs login.
+    from upright.services import wifi as wifi_service
+
+    monkeypatch.setattr(wifi_service, "is_client_connected", lambda: True)
     assert client.get("/api/wifi/scan").status_code == 401
     assert client.post("/api/wifi/connect", json={"ssid": "X"}).status_code == 401
 

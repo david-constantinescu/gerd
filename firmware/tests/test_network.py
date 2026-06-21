@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from upright.services import netinfo, wifi
+from upright.services import netinfo, provisioning, wifi
 
 
 def test_hostname_and_mdns():
@@ -70,3 +70,62 @@ def test_wifi_scan_parses_nmcli(monkeypatch):
     assert [n["ssid"] for n in nets] == ["HomeNet", "OpenCafe"]  # deduped, sorted
     assert nets[0]["secure"] is True
     assert nets[1]["secure"] is False
+
+
+def test_wifi_ap_graceful_without_nmcli():
+    with patch.object(wifi, "is_available", return_value=False):
+        assert wifi.is_ap_active() is False
+        assert wifi.is_client_connected() is False
+        assert wifi.start_ap()[0] is False
+        assert wifi.stop_ap()[0] is False
+
+
+def test_active_wifi_cons_distinguishes_ap(monkeypatch):
+    class FakeProc:
+        returncode = 0
+        stdout = f"wifi:HomeNet\nethernet:Wired\nwifi:{wifi.SETUP_AP_CON}\n"
+
+    monkeypatch.setattr(wifi, "is_available", lambda: True)
+    monkeypatch.setattr(wifi, "_run", lambda *a, **k: FakeProc())
+    assert wifi.is_ap_active() is True       # setup AP connection present
+    assert wifi.is_client_connected() is True  # HomeNet is a non-AP wifi con
+
+
+def test_wifi_qr_payload_format_and_escaping():
+    p = provisioning.wifi_qr_payload("MyNet", "p;a:ss")
+    assert p.startswith("WIFI:S:MyNet;T:WPA;P:")
+    assert "p\\;a\\:ss" in p  # ';' and ':' escaped
+    assert p.endswith(";;")
+    # open network
+    assert "T:nopass;" in provisioning.wifi_qr_payload("Open", "")
+
+
+def test_provisioning_setup_url():
+    assert provisioning.setup_url() == f"http://{wifi.SETUP_AP_GATEWAY}/"
+
+
+def test_provisioning_tick_brings_ap_up_when_offline(monkeypatch):
+    calls = []
+    monkeypatch.setattr(wifi, "is_available", lambda: True)
+    monkeypatch.setattr(wifi, "is_client_connected", lambda: False)
+    monkeypatch.setattr(wifi, "is_ap_active", lambda: False)
+    monkeypatch.setattr(wifi, "start_ap", lambda: (calls.append("up") or (True, "up")))
+    provisioning._tick()
+    assert calls == ["up"]
+
+
+def test_provisioning_tick_drops_ap_when_connected(monkeypatch):
+    calls = []
+    monkeypatch.setattr(wifi, "is_available", lambda: True)
+    monkeypatch.setattr(wifi, "is_client_connected", lambda: True)
+    monkeypatch.setattr(wifi, "is_ap_active", lambda: True)
+    monkeypatch.setattr(wifi, "stop_ap", lambda: (calls.append("down") or (True, "down")))
+    provisioning._tick()
+    assert calls == ["down"]
+
+
+def test_provisioning_thread_noop_without_nmcli():
+    with patch.object(wifi, "is_available", return_value=False):
+        th = provisioning.start_thread(dry_run=False)
+        assert th.is_alive()
+        th.stop.set()

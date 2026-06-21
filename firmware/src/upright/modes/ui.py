@@ -393,20 +393,38 @@ def _draw_back_chip(d: ImageDraw.ImageDraw) -> None:
 
 
 def draw_network(d: ImageDraw.ImageDraw, ctx: dict) -> None:
-    """Full-screen scannable QR to open the dashboard, plus a small back chip."""
+    """Network screen.
+
+    online → full-screen QR to open the dashboard.
+    setup  → Wi-Fi-join QR for the temporary setup AP + a one-line hint.
+    """
     w, h = _wh(ctx)
     qr = ctx.get("net_qr_image")
     img = ctx.get("_img")
+    setup = ctx.get("net_mode") == "setup"
+
     if qr is not None and img is not None:
         qw, qh = qr.size
-        img.paste(qr, (max(0, (w - qw) // 2), max(0, (h - qh) // 2)))
+        top = 2 if setup else (h - qh) // 2
+        img.paste(qr, (max(0, (w - qw) // 2), max(0, top)))
         _draw_back_chip(d)
+        if setup:
+            ip = (ctx.get("net_setup_url") or "http://10.42.0.1/")[7:].rstrip("/")
+            d.text((4, h - 11), f"Join Wi-Fi, open {ip}", fill=theme._C_DIM)
         return
-    # Fallback when QR generation is unavailable: show the address to type.
-    host = ctx.get("net_host") or "upright.local"
-    theme.title_bar(d, "NETWORK", w)
-    d.text((4, 40), "Open in a browser:", fill=theme._C_DIM)
-    d.text((4, 56), str(ctx.get("net_url") or f"http://{host}/")[:24], fill=theme._C_FG)
+
+    # Fallback when QR generation is unavailable: show what to do as text.
+    if setup:
+        theme.title_bar(d, "WIFI SETUP", w)
+        d.text((4, 34), f"Join: {ctx.get('net_setup_ssid') or 'UpRight-Setup'}", fill=theme._C_FG)
+        d.text((4, 50), f"Pass: {ctx.get('net_setup_pass') or 'uprightsetup'}", fill=theme._C_DIM)
+        d.text((4, 66), "Then open:", fill=theme._C_DIM)
+        d.text((4, 80), str(ctx.get("net_setup_url") or "http://10.42.0.1/")[:24], fill=theme._C_FG)
+    else:
+        host = ctx.get("net_host") or "upright.local"
+        theme.title_bar(d, "NETWORK", w)
+        d.text((4, 40), "Open in a browser:", fill=theme._C_DIM)
+        d.text((4, 56), str(ctx.get("net_url") or f"http://{host}/")[:24], fill=theme._C_FG)
     theme.menu_row(d, h - 14, "> Back", w=w, selected=True)
 
 

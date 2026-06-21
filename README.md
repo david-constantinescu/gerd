@@ -19,8 +19,10 @@ Raspberry Pi Zero 2 W.
 - **HRV / stress** via a MAX30102 in the clip, pressed against the skin.
 - **Medication reminders** with button-press acknowledgment.
 - **Local Flask PWA** dashboard reachable at `http://<hostname>.local` (mDNS)
-  on your own Wi-Fi. Add or switch networks from Settings → Network (scan +
-  connect, or scan the on-screen QR to open the dashboard). No cloud, no app store.
+  on your own Wi-Fi. First-time setup needs no app: the device raises a temporary
+  **UpRight-Setup** Wi-Fi AP — scan the on-screen Wi-Fi QR to join it from any
+  phone, open `http://10.42.0.1`, and pick your network. Add/switch networks later
+  from Settings → Network. No cloud, no app store.
 
 The full subsystem layout and milestone breakdown lives in
 [`docs/BUILD.md`](docs/BUILD.md). Wiring pinout in

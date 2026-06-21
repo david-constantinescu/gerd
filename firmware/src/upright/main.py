@@ -68,11 +68,14 @@ def _init_gpio_pins(*, dry_run: bool) -> None:
 def _start_hal(bus: EventBus, dry_run: bool) -> list[threading.Thread]:
     """Start every HAL polling thread. Returns the list so they can be joined."""
     from .hal import button, imu, power
+    from .services import provisioning
 
     threads: list[threading.Thread] = []
     threads.append(imu.start_thread(bus, dry_run=dry_run))
     threads.append(power.start_thread(bus, dry_run=dry_run))
     threads.append(button.start_thread(bus, dry_run=dry_run))
+    # Bring up the setup AP when there's no Wi-Fi so first-time provisioning works.
+    threads.append(provisioning.start_thread(dry_run=dry_run))
     return threads
 
 

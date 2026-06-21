@@ -343,6 +343,15 @@ def api_settings():
     return jsonify(asdict(TUNABLES))
 
 
+def _wifi_change_allowed() -> bool:
+    """Wi-Fi scan/connect needs login normally, but is open during first-time
+    setup (no client connection yet) — the only network then is the setup AP the
+    user physically joined, so there's no untrusted LAN to protect against."""
+    from ..services import wifi as wifi_service
+
+    return is_authenticated() or not wifi_service.is_client_connected()
+
+
 @app.get("/api/wifi/status")
 def api_wifi_status():
     """Current network identity — how to reach this device on the LAN."""
@@ -352,6 +361,9 @@ def api_wifi_status():
     info = netinfo.status()
     info["ssid"] = wifi_service.current_ssid()
     info["manageable"] = wifi_service.is_available()
+    info["connected"] = wifi_service.is_client_connected()
+    info["setup_mode"] = wifi_service.is_ap_active() or not wifi_service.is_client_connected()
+    info["setup_ssid"] = wifi_service.SETUP_AP_SSID
     return jsonify(info)
 
 
@@ -368,18 +380,20 @@ def api_wifi_qr():
 
 
 @app.get("/api/wifi/scan")
-@require_login
 def api_wifi_scan():
     from ..services import wifi as wifi_service
 
+    if not _wifi_change_allowed():
+        return jsonify({"error": "login required"}), 401
     return jsonify({"networks": wifi_service.scan(), "available": wifi_service.is_available()})
 
 
 @app.post("/api/wifi/connect")
-@require_login
 def api_wifi_connect():
     from ..services import wifi as wifi_service
 
+    if not _wifi_change_allowed():
+        return jsonify({"error": "login required"}), 401
     data = request.get_json(silent=True) or {}
     ok, msg = wifi_service.connect(
         (data.get("ssid") or "").strip(), data.get("password") or None

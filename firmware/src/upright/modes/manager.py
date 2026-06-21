@@ -425,24 +425,42 @@ class ModeManager:
             self.menu.open = True
 
     def _refresh_net_info(self) -> None:
-        """Snapshot network identity + a dashboard QR for the Network screen.
+        """Snapshot network state + the right QR for the Network screen.
 
-        Done on screen entry (not every frame) — ``wifi.current_ssid`` shells
-        out to nmcli, which is too slow to call on each repaint.
+        Two modes:
+        - online  → QR of the dashboard URL (scan to open it on a phone)
+        - setup   → standard Wi-Fi QR for the temporary setup AP (scan to join)
+
+        Done on screen entry (not every frame) — the nmcli calls are too slow to
+        run on each repaint.
         """
-        from ..services import netinfo, wifi
+        from ..services import netinfo, provisioning, wifi
+
+        ip = netinfo.lan_ip()
+        ap_active = wifi.is_ap_active()
+        # "online" = associated to a real network with a usable LAN IP (the AP's
+        # own 10.42.x gateway doesn't count).
+        online = (not ap_active) and ip is not None and not ip.startswith("10.42.")
 
         info = netinfo.status()
         info["ssid"] = wifi.current_ssid()
-        self._net_info = info
-        url = info.get("url") or netinfo.dashboard_url()
-        # Size the QR to (nearly) fill the panel — biggest scannable code.
-        box = max(40, min(int(self.oled.width), int(self.oled.height)) - 8)
+        info["mode"] = "online" if online else "setup"
+        side = min(int(self.oled.width), int(self.oled.height))
         try:
-            self._net_qr = netinfo.qr_image_fit(url, box, border=2, error="l")
+            if online:
+                url = info.get("url") or netinfo.dashboard_url()
+                self._net_qr = netinfo.qr_image_fit(url, max(40, side - 8), border=2, error="l")
+            else:
+                info["setup_ssid"] = wifi.SETUP_AP_SSID
+                info["setup_pass"] = wifi.SETUP_AP_PASSWORD
+                info["setup_url"] = provisioning.setup_url()
+                payload = provisioning.wifi_qr_payload()
+                # leave a footer line for the "join, then open …" hint
+                self._net_qr = netinfo.qr_image_fit(payload, max(40, side - 20), border=2, error="l")
         except Exception as e:  # pragma: no cover - segno/runtime specific
             log.warning("QR render failed: %s", e)
             self._net_qr = None
+        self._net_info = info
 
     def _menu_action(self, action: str, now: float) -> None:
         """Confirm the highlighted menu choice."""
@@ -835,6 +853,10 @@ class ModeManager:
             "net_ip": self._net_info.get("ip"),
             "net_host": self._net_info.get("mdns"),
             "net_url": self._net_info.get("url"),
+            "net_mode": self._net_info.get("mode", "online"),
+            "net_setup_ssid": self._net_info.get("setup_ssid"),
+            "net_setup_pass": self._net_info.get("setup_pass"),
+            "net_setup_url": self._net_info.get("setup_url"),
             "net_qr_image": self._net_qr,
             "demo_mode": TUNABLES.demo_mode,
             "analytics_lines": analytics_lines,

@@ -13,8 +13,10 @@
 #   5. enables mDNS (avahi) so the device is reachable at <hostname>.local
 #   6. installs and enables the two systemd units (upright + upright-web)
 #
-# Wi-Fi: provision the first network with Raspberry Pi Imager (or raspi-config);
-# afterwards add/switch networks from the dashboard → Settings → Network.
+# Wi-Fi: with no network configured, the device raises a temporary "UpRight-Setup"
+# access point — scan the Wi-Fi QR on its screen to join, open http://10.42.0.1,
+# and pick your network. (You can also pre-seed Wi-Fi with Raspberry Pi Imager.)
+# Afterwards add/switch networks from the dashboard → Settings → Network.
 #
 # Idempotent — safe to re-run after a `git pull` to pick up updates.
 
@@ -119,8 +121,10 @@ log "done!"
 log ""
 log "Next steps:"
 log "  • reboot once so I²C / I²S come up: sudo reboot"
-log "  • on the same Wi-Fi, open  http://$(hostname).local  in any browser"
+log "  • FIRST-TIME Wi-Fi: scan the 'UpRight-Setup' QR on the device screen to"
+log "    join it, open http://10.42.0.1, and choose your network"
+log "  • after that, open  http://$(hostname).local  on the same Wi-Fi"
 log "    (or use the device's IP — check with: hostname -I)"
-log "  • add/switch Wi-Fi from the dashboard → Settings → Network"
+log "  • add/switch Wi-Fi later from the dashboard → Settings → Network"
 log "  • remote access: see reference docs/TAILSCALE.md (optional)"
 log "  • follow logs:  journalctl -u upright -f"
