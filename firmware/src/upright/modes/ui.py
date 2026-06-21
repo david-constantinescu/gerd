@@ -419,8 +419,8 @@ def draw_network(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         img.paste(qr, (max(0, (w - qw) // 2), max(0, top)))
         _draw_back_chip(d)
         if setup:
-            ip = (ctx.get("net_setup_url") or "http://10.42.0.1/")[7:].rstrip("/")
-            d.text((4, h - 11), f"Join Wi-Fi, open {ip}", fill=theme._C_DIM)
+            # Captive portal opens the setup page on its own after joining.
+            d.text((4, h - 11), "Scan to join - setup opens itself", fill=theme._C_DIM)
         return
 
     # Fallback when QR generation is unavailable: show what to do as text.

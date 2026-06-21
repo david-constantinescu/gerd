@@ -77,3 +77,42 @@ def test_settings_page_has_network_not_hotspot(client):
     assert r.status_code == 200
     assert b"Network" in r.data
     assert b"Hotspot" not in r.data
+
+
+def test_captive_portal_off_when_not_in_setup(client):
+    # Normal operation: OS connectivity probes are not hijacked.
+    r = client.get("/generate_204")
+    assert r.status_code != 302
+
+
+def test_captive_portal_redirects_probe_in_setup(client, monkeypatch):
+    from upright.services import provisioning
+
+    monkeypatch.setattr(provisioning, "is_setup_mode", lambda: True)
+    r = client.get("/generate_204")
+    assert r.status_code == 302
+    assert "10.42.0.1" in r.headers["Location"]
+
+
+def test_captive_portal_redirects_foreign_host_in_setup(client, monkeypatch):
+    from upright.services import provisioning
+
+    monkeypatch.setattr(provisioning, "is_setup_mode", lambda: True)
+    r = client.get("/", base_url="http://example.com")
+    assert r.status_code == 302
+    assert "10.42.0.1" in r.headers["Location"]
+
+
+def test_setup_page_served_in_setup_mode(client, monkeypatch):
+    from upright.services import provisioning
+
+    monkeypatch.setattr(provisioning, "is_setup_mode", lambda: True)
+    r = client.get("/")  # own host (localhost) → clean Wi-Fi picker, not dashboard
+    assert r.status_code == 200
+    assert b"Connect UpRight to Wi-Fi" in r.data
+
+
+def test_setup_page_always_reachable(client):
+    r = client.get("/setup")
+    assert r.status_code == 200
+    assert b"Connect UpRight to Wi-Fi" in r.data

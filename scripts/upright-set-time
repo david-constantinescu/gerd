@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# upright-set-time <epoch-seconds>
+#
+# Narrow, sudoers-allowed helper that lets the (non-root) UpRight firmware set
+# the system clock from an HTTP Date header on networks that block NTP. It only
+# accepts a single plausible Unix timestamp, then persists it via fake-hwclock —
+# so there is no arbitrary `date -s` shell exposure in sudoers.
+set -euo pipefail
+
+ts="${1:-}"
+[[ "$ts" =~ ^[0-9]+$ ]] || { echo "usage: upright-set-time <epoch-seconds>" >&2; exit 2; }
+
+# Reject implausible values: must be after 2024-01-01 and before 2100-01-01.
+if (( ts < 1704067200 || ts > 4102444800 )); then
+  echo "refusing implausible timestamp: $ts" >&2
+  exit 3
+fi
+
+date -u -s "@$ts" >/dev/null
+command -v fake-hwclock >/dev/null 2>&1 && fake-hwclock save || true
+echo "clock set to $(date -u -d "@$ts" '+%Y-%m-%d %H:%M:%S UTC')"

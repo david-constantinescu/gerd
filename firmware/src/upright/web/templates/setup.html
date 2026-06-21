@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>UpRight — Wi-Fi setup</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+         background: #0e1116; color: #e8ebf0; padding: 22px 18px 40px; }
+  .wrap { max-width: 460px; margin: 0 auto; }
+  .logo { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 14px;
+          background: linear-gradient(135deg, #5db4ff, #9b8cff); color: #0b0d11;
+          font-weight: 800; font-size: 26px; margin: 6px 0 14px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { color: #9aa3b2; margin: 0 0 20px; }
+  button { font: inherit; cursor: pointer; }
+  .scan { width: 100%; padding: 13px; border: 0; border-radius: 12px; font-weight: 600;
+          background: #2a3038; color: #e8ebf0; margin-bottom: 14px; }
+  .scan:active { background: #333b45; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { margin-bottom: 9px; }
+  .net { width: 100%; text-align: left; padding: 14px 16px; border: 1px solid #262d36;
+         border-radius: 12px; background: #161b22; color: #e8ebf0; display: flex;
+         align-items: center; gap: 10px; }
+  .net:active { border-color: #5db4ff; }
+  .net .ssid { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .net .sig { color: #9aa3b2; font-size: 13px; }
+  .msg { margin: 14px 2px; color: #9aa3b2; min-height: 1.4em; }
+  .ok { color: #4ad295; }
+  .err { color: #ff6b6b; }
+  .done { text-align: center; padding-top: 8px; }
+  .done h2 { color: #4ad295; font-size: 20px; margin: 4px 0 14px; }
+  .done a { color: #5db4ff; font-weight: 700; font-size: 18px; word-break: break-all; }
+  .done img { width: 220px; height: 220px; background: #fff; border-radius: 12px;
+              padding: 10px; margin: 16px auto; display: block; }
+  .hint { background: #161b22; border: 1px solid #262d36; border-radius: 12px;
+          padding: 14px 16px; color: #c2c9d4; font-size: 14px; }
+  .pw { width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid #2a3340;
+        background: #0c1117; color: #e8ebf0; font: inherit; margin: 8px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">↑</div>
+  <h1>Connect UpRight to Wi-Fi</h1>
+  <p class="sub">Pick your home network so the device can sync and go online.</p>
+
+  <div id="picker">
+    <button class="scan" id="scanBtn">Scan for networks</button>
+    <ul id="list"></ul>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="done" id="done" hidden>
+    <h2 id="doneTitle">Connected ✓</h2>
+    <div class="hint" id="doneHint"></div>
+    <img id="doneQr" alt="Dashboard QR" hidden>
+    <p><a id="doneLink" href="#"></a></p>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+async function scan() {
+  const msg = $("#msg"), list = $("#list");
+  msg.textContent = "Scanning…"; list.innerHTML = "";
+  let data = {};
+  try { data = await (await fetch("/api/wifi/scan")).json(); }
+  catch (_) { msg.textContent = "Could not scan. Try again."; return; }
+  if (!data.available) { msg.textContent = "Wi-Fi control not available."; return; }
+  const nets = data.networks || [];
+  if (!nets.length) { msg.textContent = "No networks found — move closer and rescan."; return; }
+  msg.textContent = "";
+  list.innerHTML = nets.map((n) =>
+    `<li><button class="net" data-ssid="${encodeURIComponent(n.ssid)}" data-secure="${n.secure}">
+       <span>${n.secure ? "🔒" : "📶"}</span>
+       <span class="ssid">${n.ssid}</span>
+       <span class="sig">${n.signal}%</span>
+     </button></li>`).join("");
+  list.querySelectorAll(".net").forEach((b) => b.addEventListener("click", () =>
+    connect(decodeURIComponent(b.dataset.ssid), b.dataset.secure === "true")));
+}
+async function connect(ssid, secure) {
+  const msg = $("#msg");
+  let password = null;
+  if (secure) {
+    // inline password field is friendlier in captive webviews than prompt()
+    const pw = document.createElement("input");
+    pw.type = "password"; pw.className = "pw"; pw.placeholder = `Password for "${ssid}"`;
+    const go = document.createElement("button");
+    go.className = "scan"; go.textContent = `Connect to ${ssid}`;
+    msg.textContent = ""; msg.appendChild(pw); msg.appendChild(go);
+    pw.focus();
+    await new Promise((res) => { go.addEventListener("click", res); pw.addEventListener("keydown", (e) => { if (e.key === "Enter") res(); }); });
+    password = pw.value;
+  }
+  msg.textContent = `Connecting to ${ssid}…`;
+  let data = {};
+  try {
+    data = await (await fetch("/api/wifi/connect", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ssid, password }),
+    })).json();
+  } catch (_) { /* AP is dropping as we switch — treat as optimistic success */ data = { ok: true }; }
+  if (data.ok) showDone(ssid, data.dashboard_url, data.mdns);
+  else { msg.className = "msg err"; msg.textContent = `Failed: ${data.message || "try again"}`; }
+}
+function showDone(ssid, url, mdns) {
+  url = url || ("http://" + (mdns || "upright.local") + "/");
+  $("#picker").hidden = true;
+  const done = $("#done"); done.hidden = false;
+  $("#doneTitle").textContent = "Connecting to " + ssid + " ✓";
+  $("#doneHint").innerHTML =
+    "Now switch this phone back to <b>" + ssid + "</b> (your home Wi-Fi), " +
+    "then open the dashboard — scan the code or tap the link below.";
+  const a = $("#doneLink"); a.href = url; a.textContent = url;
+  const qr = $("#doneQr");
+  qr.src = "/api/wifi/qr.png?url=" + encodeURIComponent(url);
+  qr.hidden = false;
+}
+$("#scanBtn").addEventListener("click", scan);
+scan();
+</script>
+</body>
+</html>

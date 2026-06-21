@@ -72,12 +72,72 @@ def _db() -> Logger:
     return Logger()
 
 
+# -------------------------------------------------- captive portal (setup AP)
+# While the device hosts the temporary setup AP, NetworkManager's dnsmasq is
+# configured (see install.sh) to resolve every domain to the gateway, so every
+# OS "is this network online?" probe lands here. Redirecting those probes makes
+# the phone pop its captive-portal sheet straight onto the Wi-Fi setup page —
+# the user just scans the Wi-Fi QR and the page opens itself, no typing a URL.
+
+# Paths the major OSes hit to detect a captive portal.
+_CAPTIVE_PROBE_PATHS = frozenset({
+    "/generate_204", "/gen_204",  # Android / Chrome
+    "/hotspot-detect.html", "/library/test/success.html",  # iOS / macOS
+    "/ncsi.txt", "/connecttest.txt", "/redirect",  # Windows
+    "/canonical.html", "/success.txt",  # Firefox / others
+})
+
+
+def _serving_own_host() -> bool:
+    """True if this request is aimed at the device itself (not a hijacked probe)."""
+    host = (request.host or "").split(":")[0].lower()
+    from ..services import wifi as wifi_service
+
+    return (
+        host in ("localhost", "127.0.0.1", wifi_service.SETUP_AP_GATEWAY)
+        or host.endswith(".local")
+    )
+
+
+@app.before_request
+def _captive_portal_redirect():
+    from ..services import provisioning
+
+    if not provisioning.is_setup_mode():
+        return None  # normal operation — no portal behavior
+    # Let our own pages, assets and API serve normally so the setup UI loads.
+    if (
+        _serving_own_host()
+        and request.path not in _CAPTIVE_PROBE_PATHS
+        and (
+            request.path in ("/", "/setup")
+            or request.path.startswith(("/api/", "/static/", "/login"))
+        )
+    ):
+        return None
+    # Anything else during setup is an OS connectivity probe (or a foreign
+    # domain hijacked to us) — bounce it to the setup page so the portal opens.
+    return redirect(provisioning.setup_url(), code=302)
+
+
 # -------------------------------------------------- page routes
 
 
 @app.route("/")
 def dashboard():
+    # During first-time setup the captive portal lands here — show the clean,
+    # login-free Wi-Fi picker instead of the full dashboard.
+    from ..services import provisioning
+
+    if provisioning.is_setup_mode():
+        return render_template("setup.html")
     return render_template("dashboard.html", active="dashboard")
+
+
+@app.route("/setup")
+def setup_page():
+    """The first-time Wi-Fi picker, always reachable (also used by the portal)."""
+    return render_template("setup.html")
 
 
 @app.route("/food-log")
@@ -398,7 +458,15 @@ def api_wifi_connect():
     ok, msg = wifi_service.connect(
         (data.get("ssid") or "").strip(), data.get("password") or None
     )
-    return jsonify({"ok": ok, "message": msg}), (200 if ok else 400)
+    resp: dict = {"ok": ok, "message": msg}
+    if ok:
+        # Hand the phone everything it needs to reach the device on the home
+        # network once it leaves the setup AP.
+        from ..services import netinfo
+
+        resp["dashboard_url"] = netinfo.dashboard_url()
+        resp["mdns"] = netinfo.mdns_host()
+    return jsonify(resp), (200 if ok else 400)
 
 
 @app.route("/api/analytics")

@@ -24,6 +24,15 @@ log = logging.getLogger("services.provisioning")
 _BOOT_GRACE_S = 30.0
 _CHECK_INTERVAL_S = 20.0
 
+# Cheap, cached "are we hosting the setup AP right now?" flag, refreshed by the
+# reconcile loop. The web captive-portal hook reads this on every request, so it
+# must not shell out to nmcli each time.
+_setup_mode = False
+
+
+def is_setup_mode() -> bool:
+    return _setup_mode
+
 
 def setup_url() -> str:
     return f"http://{wifi.SETUP_AP_GATEWAY}/"
@@ -56,15 +65,21 @@ def state() -> dict:
 
 def _tick() -> None:
     """One reconcile step: AP up iff there's no client connection."""
+    global _setup_mode
     if not wifi.is_available():
+        _setup_mode = False
         return
     if wifi.is_client_connected():
         if wifi.is_ap_active():
             wifi.stop_ap()
+        _setup_mode = False
     elif not wifi.is_ap_active():
         ok, msg = wifi.start_ap()
         if not ok:
             log.warning("could not raise setup AP: %s", msg)
+        _setup_mode = ok
+    else:
+        _setup_mode = True
 
 
 def _loop(stop: threading.Event) -> None:
