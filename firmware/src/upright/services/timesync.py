@@ -118,9 +118,17 @@ def _loop(stop: threading.Event) -> None:
 
 
 def start_thread(*, dry_run: bool = False) -> threading.Thread:
-    """Start the clock-keeper. No-op thread on dry-run / when chrony is absent."""
+    """Start the clock-keeper.
+
+    Active when chrony is present (NTP path) *or* the set-time helper is
+    installed (HTTP-Date path) — so the clock is still corrected on boards where
+    chrony was never apt-installed but the firmware files were hand-deployed.
+    No-op thread on dry-run or a plain dev box.
+    """
     stop = threading.Event()
-    active = (not dry_run) and shutil.which("chronyc") is not None
+    active = (not dry_run) and (
+        shutil.which("chronyc") is not None or os.path.exists(_SETTIME_HELPER)
+    )
     target = (lambda: _loop(stop)) if active else (lambda: stop.wait())
     th = threading.Thread(target=target, name="timesync", daemon=True)
     th.stop = stop  # type: ignore[attr-defined]
