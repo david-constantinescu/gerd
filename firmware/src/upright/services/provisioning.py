@@ -20,9 +20,10 @@ from . import wifi
 log = logging.getLogger("services.provisioning")
 
 # Give NetworkManager time to auto-connect to a known network at boot before we
-# decide the device is "unprovisioned" and raise the setup AP.
-_BOOT_GRACE_S = 30.0
-_CHECK_INTERVAL_S = 20.0
+# decide the device is "unprovisioned" and raise the setup AP. Kept short so the
+# AP appears quickly when the saved network is out of range / wrong.
+_BOOT_GRACE_S = 12.0
+_CHECK_INTERVAL_S = 15.0
 
 # Cheap, cached "are we hosting the setup AP right now?" flag, refreshed by the
 # reconcile loop. The web captive-portal hook reads this on every request, so it

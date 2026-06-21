@@ -415,12 +415,17 @@ def draw_network(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
     if qr is not None and img is not None:
         qw, qh = qr.size
-        top = 2 if setup else (h - qh) // 2
+        # Online: leave a footer line free to print the IP (works without mDNS).
+        top = 2 if setup else max(0, (h - qh) // 2 - 6)
         img.paste(qr, (max(0, (w - qw) // 2), max(0, top)))
         _draw_back_chip(d)
         if setup:
             # Captive portal opens the setup page on its own after joining.
             d.text((4, h - 11), "Scan to join - setup opens itself", fill=theme._C_DIM)
+        else:
+            ip = ctx.get("net_ip")
+            label = f"http://{ip}" if ip else (ctx.get("net_url") or "")
+            d.text((4, h - 11), _ascii(label)[:26], fill=theme._C_DIM)
         return
 
     # Fallback when QR generation is unavailable: show what to do as text.

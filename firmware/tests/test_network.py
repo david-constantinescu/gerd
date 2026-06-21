@@ -80,6 +80,34 @@ def test_wifi_ap_graceful_without_nmcli():
         assert wifi.stop_ap()[0] is False
 
 
+def test_start_ap_hardened_profile(monkeypatch):
+    """The AP must free the radio and beacon with explicit WPA2/RSN + a channel."""
+    calls = []
+
+    class Ok:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(args, timeout):
+        calls.append(args)
+        return Ok()
+
+    monkeypatch.setattr(wifi, "is_available", lambda: True)
+    monkeypatch.setattr(wifi, "is_ap_active", lambda: False)
+    monkeypatch.setattr(wifi, "_run", fake_run)
+    ok, _ = wifi.start_ap()
+    assert ok is True
+    flat = [" ".join(c) for c in calls]
+    assert any("device disconnect" in c for c in flat)  # freed the single radio
+    assert any("connection delete" in c for c in flat)  # recreated cleanly
+    add = next(c for c in calls if "add" in c)
+    add_str = " ".join(add)
+    for token in ("802-11-wireless.mode ap", "wifi-sec.proto rsn", "ccmp",
+                  "802-11-wireless.channel", "ipv4.method shared"):
+        assert token in add_str
+
+
 def test_active_wifi_cons_distinguishes_ap(monkeypatch):
     class FakeProc:
         returncode = 0

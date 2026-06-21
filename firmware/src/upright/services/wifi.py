@@ -137,26 +137,37 @@ def is_client_connected() -> bool:
 
 
 def start_ap() -> tuple[bool, str]:
-    """Bring up the temporary setup AP (idempotent)."""
+    """Bring up the temporary setup AP (idempotent).
+
+    The Pi Zero 2 W has a single radio, so a saved network that NetworkManager
+    keeps trying to auto-reconnect can hog wlan0 and stop the AP activating.
+    We free the radio first, then (re)create the profile with explicit WPA2/RSN
+    ciphers and a fixed 2.4 GHz channel — the bare ``key-mgmt wpa-psk`` form can
+    leave wpa_supplicant unable to start beaconing on some brcmfmac builds.
+    """
     if not is_available():
         return False, "nmcli unavailable"
     if is_ap_active():
         return True, "setup AP already up"
-    existing = _run(["-t", "-f", "NAME", "connection", "show"], timeout=8)
-    known = existing.stdout.splitlines() if existing else []
-    if SETUP_AP_CON not in known:
-        add = _run(
-            [
-                "connection", "add", "type", "wifi", "ifname", WIFI_IFACE,
-                "con-name", SETUP_AP_CON, "autoconnect", "no", "ssid", SETUP_AP_SSID,
-                "802-11-wireless.mode", "ap", "802-11-wireless.band", "bg",
-                "ipv4.method", "shared",
-                "wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", SETUP_AP_PASSWORD,
-            ],
-            timeout=20,
-        )
-        if add is None or add.returncode != 0:
-            return False, (add.stderr.strip() if add else "could not create AP profile")
+    # Free the single radio from any stuck/auto-retrying client connection.
+    _run(["device", "disconnect", WIFI_IFACE], timeout=15)
+    # Recreate the profile each time so the hardened settings always apply.
+    _run(["connection", "delete", SETUP_AP_CON], timeout=10)
+    add = _run(
+        [
+            "connection", "add", "type", "wifi", "ifname", WIFI_IFACE,
+            "con-name", SETUP_AP_CON, "autoconnect", "no", "ssid", SETUP_AP_SSID,
+            "802-11-wireless.mode", "ap",
+            "802-11-wireless.band", "bg", "802-11-wireless.channel", "6",
+            "ipv4.method", "shared",
+            "wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", SETUP_AP_PASSWORD,
+            "wifi-sec.proto", "rsn",
+            "wifi-sec.pairwise", "ccmp", "wifi-sec.group", "ccmp",
+        ],
+        timeout=20,
+    )
+    if add is None or add.returncode != 0:
+        return False, (add.stderr.strip() if add else "could not create AP profile")
     up = _run(["connection", "up", SETUP_AP_CON], timeout=30)
     if up is not None and up.returncode == 0:
         log.info("setup AP %r up at %s", SETUP_AP_SSID, SETUP_AP_GATEWAY)
