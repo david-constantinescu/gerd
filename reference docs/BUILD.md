@@ -78,9 +78,9 @@ quick-swap connector so you can rotate banks without rebooting the Pi.
 
 Expected runtime on a single 10 Ah bank:
 
-| Mode                     | Draw        | Runtime   |
-|--------------------------|-------------|-----------|
-| IDLE, hotspot off        | ~130 mA     | ~65 h     |
-| IDLE, hotspot on         | ~200 mA     | ~42 h     |
-| SLEEPING (0.03 Hz IMU)   | ~80 mA      | ~106 h    |
-| Food photo burst          | ~500 mA     | ~15 s / capture |
+| Mode                       | Draw        | Runtime   |
+|----------------------------|-------------|-----------|
+| IDLE, Wi-Fi client         | ~130 mA     | ~65 h     |
+| IDLE, hosting setup AP     | ~200 mA     | ~42 h     |
+| SLEEPING (0.03 Hz IMU)     | ~80 mA      | ~106 h    |
+| Food photo burst           | ~500 mA     | ~15 s / capture |

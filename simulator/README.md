@@ -108,8 +108,10 @@ simulator/
 - The encoder is *not fitted* on the real hardware (shares GPIO with the motor),
   so the firmware mostly ignores encoder events — the controls are provided for
   completeness.
-- Food-photo classification needs the TFLite model, which isn't present off-Pi;
-  the flow runs but classification returns "unknown" (matches a Pi without the
-  model installed).
+- Food-photo classification runs for real in the sim: the bundled AIY Food model
+  ships in `firmware/models/`, and `pip install ai-edge-litert` (in
+  `requirements.txt`) provides the runtime on macOS. Enable the webcam or upload a
+  food image, capture, and you get a real dish name + GERD risk. Without the
+  runtime it degrades to "Not recognized".
 - Posture alerts/haptics fire under the firmware's real timing/threshold rules
   (sustained slouch, post-meal strictness, etc.) — set a slouch and wait.

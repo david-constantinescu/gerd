@@ -14,8 +14,9 @@ cd gerd/firmware
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-pytest -q                   # should all pass
-ruff check src tests
+pip install ai-edge-litert     # optional: run the food model locally / in the sim
+pytest -q                       # 104 tests, should all pass
+ruff check src tests            # CI runs this too
 ```
 
 ## One-time setup (Pi Zero 2 W)
@@ -25,7 +26,9 @@ curl -fsSL https://raw.githubusercontent.com/david-constantinescu/gerd/main/inst
 sudo reboot
 ```
 
-After reboot, the hotspot is up and both systemd units are running.
+After reboot both systemd units run. With no Wi-Fi configured the device raises
+the **UpRight-Setup** AP for first-time provisioning; otherwise it joins your
+saved network and is reachable at `http://softhoarders-pi.local`.
 
 ## Inner loop
 
@@ -43,21 +46,30 @@ sudo systemctl restart upright upright-web
 journalctl -u upright -f        # tail logs
 ```
 
-## Dev mode — temporarily leaving the hotspot
+## Verify with the simulator (no hardware)
 
-The hotspot puts `wlan0` in AP mode, which means the Pi can't reach GitHub
-while hotspot is up. To pull updates you need to flip it off first:
+The simulator runs the **real** firmware against a virtual HAL with a browser
+bench + HTTP control API — use it to check UI/flows before deploying:
 
 ```bash
-# on the Pi
-sudo systemctl stop hostapd dnsmasq
-sudo wpa_cli -i wlan0 reconfigure     # rejoin home wifi
-git pull
-sudo systemctl start hostapd dnsmasq  # back to hotspot mode
+cd simulator
+../firmware/.venv/bin/python run.py --port 8000   # open http://127.0.0.1:8000
 ```
 
-A TODO for later is adding a physical toggle (long-press + encoder click in
-the settings menu) that does this automatically.
+See [`../simulator/README.md`](../simulator/README.md). It's how the food-photo
+flow and the Wi-Fi setup screens were verified end-to-end.
+
+## Flashing the SD card directly from macOS
+
+When the Pi can't boot/pull (offline, or wedged), write changes straight to the
+ext4 rootfs with `e2fsprogs`/`e2tools`. Full recipe (device path, ownership,
+`e2fsck`, Touch-ID/sandbox note) is in
+[`HANDOFF.md`](HANDOFF.md) §8. The Pi venv's editable `.pth` means copying a
+`.py` in is enough — no reinstall. System-level config (captive portal, chrony)
+still needs `install.sh` to run on the Pi.
+
+> **Known open issue:** the `UpRight-Setup` AP isn't yet confirmed broadcasting
+> on real hardware. See `HANDOFF.md` §5 for the diagnosis and live-debug steps.
 
 ## Running the webapp locally on Mac
 

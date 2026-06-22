@@ -202,3 +202,55 @@ ls -la /dev/spidev* 2>/dev/null || echo no-spi
 '
 ```
 
+## 9) Finding the Pi when mDNS fails
+
+`softhoarders-pi.local` doesn't always resolve. The Mac and Pi **must be on the
+same network** (the Pi Zero 2 W is **2.4 GHz-only** — it can't join a 5 GHz-only
+hotspot). To find it by IP:
+
+```bash
+# scan the local /24 for SSH hosts...
+for i in $(seq 1 254); do (nc -G1 -z -w1 192.168.0.$i 22 2>/dev/null && echo .$i) & done; wait
+# ...then key-auth probe each; the Pi answers its hostname
+for ip in <candidates>; do
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=4 \
+      softhoarders@192.168.0.$ip 'hostname' 2>/dev/null
+done   # the Pi answers "softhoarders-pi"
+```
+The device's **Settings → Network** OLED screen also prints the LAN IP under the
+QR when it's online.
+
+## 10) Wi-Fi management & first-time provisioning
+
+- Networks are managed by **NetworkManager** (`nmcli`). Saved profiles live at
+  `/etc/NetworkManager/system-connections/*.nmconnection` (mode `0600`, root).
+- With **no** usable network, `provisioning.py` raises the **UpRight-Setup** AP
+  (`uprightsetup`, gateway `10.42.0.1`). A captive portal auto-opens the setup
+  page; or visit `http://10.42.0.1`.
+- Add a network from the CLI: `sudo nmcli device wifi connect "<SSID>" password "<pw>"`.
+- Debug the setup AP **live** (see also `HANDOFF.md` §5):
+  ```bash
+  nmcli -f WIFI-PROPERTIES device show wlan0   # does the driver advertise AP mode?
+  sudo nmcli connection up upright-setup        # read the real activation error
+  iw reg get; iw dev; dmesg | grep -i brcmfmac
+  journalctl -u NetworkManager -b --no-pager | tail -50
+  ```
+
+## 11) Updating code on the Pi
+
+```bash
+# preferred — pulls model + applies system config (captive portal, chrony, sudoers)
+ssh softhoarders@softhoarders-pi.local 'cd ~/upright && git pull && sudo bash install.sh'
+ssh softhoarders@softhoarders-pi.local 'sudo systemctl restart upright upright-web'
+```
+The venv uses a lax editable `.pth`, so a plain `git pull` is enough to pick up
+new/changed Python modules — only run `install.sh` when system packages or
+`/etc` config changed. To flash an SD card directly from macOS (no Pi boot), see
+`HANDOFF.md` §8 (`e2fsprogs`/`e2tools`).
+
+## 12) Time sync
+
+The Pi has **no RTC**. Time is kept by **chrony** + **fake-hwclock**, with a
+firmware HTTP-`Date` fallback (`services/timesync.py` → `upright-set-time`).
+Check: `timedatectl; chronyc tracking` (if chrony installed).
+

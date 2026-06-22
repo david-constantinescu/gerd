@@ -1,6 +1,9 @@
 # Tailscale — remote access to UpRight
 
-The Pi normally only exposes the web app on its **hotspot** (`http://192.168.1.1`). With Tailscale, you can open the same UI from anywhere on your tailnet (phone/laptop on Tailscale, no port forwarding).
+The Pi normally exposes the web app only on your **local Wi-Fi** at
+`http://softhoarders-pi.local` (mDNS). With Tailscale, you can open the same UI
+from anywhere on your tailnet (phone/laptop on Tailscale, no port forwarding) —
+handy for remote SSH/debugging when the Pi isn't on your LAN.
 
 ## One-time install on the Pi
 
@@ -54,7 +57,9 @@ Example: if the IP is `100.64.12.34`, open:
 
 ## Notes
 
-- Tailscale and the **UpRight-AP** hotspot can both be enabled; the Pi may use `wlan0` for AP. Tailscale uses its own interface (`tailscale0`).
+- Tailscale runs over its own interface (`tailscale0`) and is independent of
+  `wlan0`, so it works whether the Pi is a Wi-Fi client or briefly hosting the
+  **UpRight-Setup** provisioning AP.
 - Commands from the web UI still go through the SQLite **inbox**; the `upright` firmware service must be running (`systemctl status upright`).
 - For SSH: `ssh softhoarders@100.64.12.34` (if SSH is enabled on the Pi).
 
