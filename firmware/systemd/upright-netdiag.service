@@ -1,0 +1,14 @@
+[Unit]
+Description=UpRight Wi-Fi/NetworkManager diagnostic to the boot partition
+After=NetworkManager.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Give NM time to try the saved networks / raise the setup AP first.
+ExecStartPre=/bin/sleep 25
+ExecStart=/usr/local/sbin/upright-netdiag
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target

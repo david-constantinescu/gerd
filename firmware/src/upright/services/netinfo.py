@@ -97,13 +97,24 @@ def qr_image(data: str, *, scale: int = 3, border: int = 2):
     return Image.open(io.BytesIO(png)).convert("RGB")
 
 
-def qr_image_fit(data: str, max_px: int, *, border: int = 2, error: str = "l"):
+def qr_image_fit(
+    data: str,
+    max_px: int,
+    *,
+    border: int = 2,
+    error: str = "l",
+    dark_bg: bool = False,
+):
     """Largest *crisp* QR (integer module scale) that fits in ``max_px`` pixels.
 
     Integer scaling keeps every module the same size — sharper and more reliable
     to scan than stretching. ``error='l'`` (low EC) minimises the module count so
     each module is as large as possible on a tiny TFT; the display is clean so
     the extra error-correction of higher levels isn't needed.
+
+    ``dark_bg=True`` inverts to white modules on black — required for the OLED,
+    which renders on a black frame (segno's default black-on-white paste would
+  make the code invisible).
     """
     try:
         import segno  # type: ignore[import-not-found]
@@ -115,9 +126,12 @@ def qr_image_fit(data: str, max_px: int, *, border: int = 2, error: str = "l"):
     scale = max(1, max_px // modules)
     buf = io.BytesIO()
     qr.save(buf, kind="png", scale=scale, border=border)
-    from PIL import Image
+    from PIL import Image, ImageOps
 
-    return Image.open(io.BytesIO(buf.getvalue())).convert("RGB")
+    img = Image.open(io.BytesIO(buf.getvalue())).convert("RGB")
+    if dark_bg:
+        img = ImageOps.invert(img)
+    return img
 
 
 def qr_svg(data: str, *, scale: int = 4, border: int = 2) -> str | None:

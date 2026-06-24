@@ -103,7 +103,8 @@ class SimDevice:
             self._camera_ts = time.time()
 
     def camera_active(self) -> bool:
-        return time.time() - self._camera_ts < 2.5
+        # Bench users often upload a still, then navigate the menu before capture.
+        return time.time() - self._camera_ts < 60.0
 
     def get_camera_frame(self, width: int, height: int) -> Image.Image:
         """Return the latest webcam frame, or a synthetic placeholder."""
@@ -111,7 +112,16 @@ class SimDevice:
             img = self._camera_img
         if img is None:
             img = self._placeholder_camera()
-        return img.resize((width, height))
+        img = img.convert("RGB")
+        iw, ih = img.size
+        # Center-crop to aspect (like a real UVC frame); letterbox bars confused TFLite.
+        scale = max(width / iw, height / ih)
+        tw = max(1, int(iw * scale))
+        th = max(1, int(ih * scale))
+        resized = img.resize((tw, th), Image.Resampling.LANCZOS)
+        left = max(0, (tw - width) // 2)
+        top = max(0, (th - height) // 2)
+        return resized.crop((left, top, left + width, top + height))
 
     @staticmethod
     def _placeholder_camera() -> Image.Image:
@@ -188,6 +198,8 @@ class SimDevice:
                     "battery_pct": getattr(m.ctx, "battery_pct", None),
                     "ctx_pitch": round(getattr(m.ctx, "pitch", 0.0), 1),
                     "ctx_roll": round(getattr(m.ctx, "roll", 0.0), 1),
+                    "food_result": dict(getattr(m.ctx, "food_result", None) or {}),
+                    "net_mode": (getattr(m, "_net_info", None) or {}).get("mode"),
                 }
             except Exception:
                 pass
@@ -196,6 +208,11 @@ class SimDevice:
             "uptime_s": round(time.time() - self.start_time, 1),
             "frame_count": self.frame_count,
             "fsm": fsm,
+            "wifi": {
+                "mode": getattr(self, "wifi_mode", "offline"),
+                "client_ssid": getattr(self, "wifi_client_ssid", None),
+                "client_ip": getattr(self, "wifi_client_ip", None),
+            },
             "inputs": {
                 "pitch": round(self.pitch, 1),
                 "roll": round(self.roll, 1),

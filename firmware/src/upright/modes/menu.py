@@ -6,25 +6,34 @@ from dataclasses import dataclass, field
 
 from ..config import TUNABLES
 
+# (i18n key, action id)
 MAIN_ITEMS: list[tuple[str, str]] = [
-    ("Log Meal", "meal"),
-    ("Log Symptom", "symptom"),
-    ("Medication", "med"),
-    ("Settings", "settings"),
-    ("Sleep Mode", "sleep"),
-    ("About", "about"),
+    ("menu.log_meal", "meal"),
+    ("menu.log_symptom", "symptom"),
+    ("menu.log_water", "water"),
+    ("menu.medication", "med"),
+    ("menu.settings", "settings"),
+    ("menu.sleep_mode", "sleep"),
+    ("menu.about", "about"),
 ]
+
+LANGUAGE_OPTIONS: list[tuple[str, str]] = [
+    ("language.english", "lang_en"),
+    ("language.romanian", "lang_ro"),
+]
+
 
 def settings_items() -> list[tuple[str, str]]:
     items: list[tuple[str, str]] = [
-        ("Calibrate posture", "calibrate"),
-        ("Week stats", "stats"),
-        ("Network", "network"),
+        ("settings.calibrate", "calibrate"),
+        ("settings.week_stats", "stats"),
+        ("settings.network", "network"),
+        ("settings.language", "language"),
     ]
     if TUNABLES.demo_mode:
-        items.append(("Exit demo mode", "demo_exit"))
+        items.append(("settings.demo_exit", "demo_exit"))
     else:
-        items.append(("Demo mode", "demo_enter"))
+        items.append(("settings.demo_enter", "demo_enter"))
     return items
 
 
@@ -110,6 +119,8 @@ class MenuState:
             return 2
         if self.screen == "settings":
             return len(settings_items())
+        if self.screen == "language":
+            return len(LANGUAGE_OPTIONS)
         if self.screen in ("about", "med_info", "stats", "network"):
             return 1
         return 1
@@ -146,6 +157,8 @@ class MenuState:
             return "med_ack"
         if self.screen == "settings":
             return settings_items()[self.index][1]
+        if self.screen == "language":
+            return LANGUAGE_OPTIONS[self.index][1]
         if self.screen == "stats":
             return "stats_done"
         if self.screen == "network":

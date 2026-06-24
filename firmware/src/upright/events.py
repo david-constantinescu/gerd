@@ -20,7 +20,6 @@ from typing import Any
 class EventType(str, Enum):
     # HAL → bus
     POSTURE_SAMPLE = "posture_sample"
-    HRV_SAMPLE = "hrv_sample"
     POWER_SAMPLE = "power_sample"
     BUTTON_PRESS = "button_press"  # payload: pattern (single|double|triple)
     ENCODER_ROTATE = "encoder_rotate"  # payload: direction (cw|ccw)

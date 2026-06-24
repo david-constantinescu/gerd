@@ -98,6 +98,41 @@ log "enabling mDNS (avahi) + NetworkManager"
 systemctl enable --now avahi-daemon 2>/dev/null || warn "avahi-daemon not enabled (install it: apt install avahi-daemon)"
 systemctl enable --now NetworkManager 2>/dev/null || true
 
+# CRITICAL: hand wlan0 to NetworkManager. Raspberry Pi Imager / some Debian
+# images configure Wi-Fi the old `ifupdown` way in /etc/network/interfaces and
+# leave NetworkManager `managed=false`, so NM never controls the radio — the
+# entire nmcli-based Wi-Fi stack (setup AP + Settings → Network) silently can't
+# touch wlan0. Migrate any ifupdown wlan config into an NM keyfile and let NM
+# manage the device.
+log "handing wlan0 to NetworkManager (migrating any ifupdown Wi-Fi)"
+if [[ -f /etc/network/interfaces ]] && grep -qE '^\s*(auto|allow-hotplug|iface)\s+wlan0' /etc/network/interfaces; then
+  ssid=$(grep -E '^\s*wpa-ssid' /etc/network/interfaces | head -1 | sed -E 's/^\s*wpa-ssid\s+"?([^"]*)"?\s*$/\1/')
+  psk=$(grep -E '^\s*wpa-psk' /etc/network/interfaces | head -1 | sed -E 's/^\s*wpa-psk\s+"?([^"]*)"?\s*$/\1/')
+  # strip wlan0 stanza so ifupdown stops claiming the radio
+  awk 'BEGIN{skip=0}
+       /^[[:space:]]*(auto|allow-hotplug|iface)[[:space:]]+wlan0/{skip=1; next}
+       /^[[:space:]]*(auto|allow-hotplug|iface)[[:space:]]+/{skip=0}
+       skip==1 && /^[[:space:]]+/ {next}
+       {skip=0; print}' /etc/network/interfaces > /etc/network/interfaces.upright && \
+    mv /etc/network/interfaces.upright /etc/network/interfaces
+  if [[ -n "${ssid:-}" ]] && ! nmcli -t -f NAME connection show 2>/dev/null | grep -qxF "$ssid"; then
+    log "  migrating ifupdown Wi-Fi '$ssid' to a NetworkManager profile"
+    nmcli connection add type wifi con-name "$ssid" ssid "$ssid" \
+      wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$psk" connection.autoconnect yes 2>/dev/null || \
+      warn "  could not migrate '$ssid' — add it from Settings → Network"
+  fi
+fi
+# Force NM to manage all devices (overrides [ifupdown] managed=false).
+install -d -m 0755 /etc/NetworkManager/conf.d
+cat > /etc/NetworkManager/conf.d/10-upright-manage-wifi.conf <<EOF
+# UpRight: NetworkManager must own wlan0 for the setup AP + Wi-Fi UI to work.
+[ifupdown]
+managed=true
+[device]
+wifi.scan-rand-mac-address=no
+EOF
+systemctl reload-or-restart NetworkManager 2>/dev/null || true
+
 # Captive portal for the setup AP: make NetworkManager's shared-mode dnsmasq
 # resolve every domain to the gateway, so a phone that joins "UpRight-Setup"
 # auto-pops its sign-in page straight onto the Wi-Fi picker (no URL to type).
@@ -135,6 +170,18 @@ if [[ -f $INSTALL_DIR/scripts/upright-set-time ]]; then
 $INSTALL_USER ALL=(root) NOPASSWD: /usr/local/sbin/upright-set-time, /usr/bin/chronyc -a makestep, /usr/bin/chronyc makestep
 EOF
   chmod 0440 /etc/sudoers.d/upright-timesync
+fi
+
+# Boot-time Wi-Fi diagnostic → writes <boot>/upright-netdiag.txt each boot so the
+# real NetworkManager/radio state can be read off the SD's boot partition from
+# any computer (no SSH needed) when networking misbehaves.
+if [[ -f $INSTALL_DIR/scripts/upright-netdiag.sh ]]; then
+  log "installing boot Wi-Fi diagnostic (upright-netdiag)"
+  install -m 0755 "$INSTALL_DIR/scripts/upright-netdiag.sh" /usr/local/sbin/upright-netdiag
+  install -m 0644 "$INSTALL_DIR/firmware/systemd/upright-netdiag.service" \
+    /etc/systemd/system/upright-netdiag.service
+  systemctl daemon-reload
+  systemctl enable upright-netdiag.service 2>/dev/null || true
 fi
 
 # -------------------------------------------------- 5. systemd units (if hardware stack did not already install them)

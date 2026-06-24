@@ -433,15 +433,30 @@ def _classify_with_zero_shot(image) -> FoodClassification | None:
     return None
 
 
-def classify(image) -> FoodClassification | None:
-    """Returns classification or None if no model / low confidence / no image."""
-    if image is None:
-        return None
-    if not _DICT:
-        load()
-    zero_shot_result = _classify_with_zero_shot(image)
-    if zero_shot_result is not None:
-        return zero_shot_result
+def _scores_to_probs(flat):
+    """Turn model outputs into a probability vector.
+
+    The bundled AIY Food model emits quantized scores that dequantize to values
+    in [0, 1]. When they already sum to ~1 they are probabilities; otherwise
+    they are unnormalized masses that should be divided by their sum (not
+    softmaxed across 2000+ near-zero classes, and not divided by 255 again).
+    Float logits (max > 1.5 or negative values) still get a softmax.
+    """
+    import numpy as np
+
+    flat = np.asarray(flat, dtype=np.float32).reshape(-1)
+    total = float(flat.sum())
+    if flat.min() >= 0 and flat.max() <= 1.0 and abs(total - 1.0) < 0.05:
+        return flat
+    if flat.min() < 0 or flat.max() > 1.5:
+        x = flat - flat.max()
+        exp = np.exp(x)
+        return exp / exp.sum()
+    return flat / total if total > 0 else flat
+
+
+def _classify_tflite(image) -> FoodClassification | None:
+    """Run the bundled TFLite Food-101 model (primary path on Pi + simulator)."""
     if not _ensure_model():
         return None
 
@@ -451,7 +466,6 @@ def classify(image) -> FoodClassification | None:
     h, w = int(inp["shape"][1]), int(inp["shape"][2])
     img = image.resize((w, h)).convert("RGB")
     arr = np.asarray(img, dtype=np.uint8)
-    # MobileNet-style input: scale to [-1, 1] if model expects float
     if inp["dtype"] != np.uint8:
         arr = (arr.astype(np.float32) / 127.5) - 1.0
     batch = np.expand_dims(arr, 0)
@@ -461,11 +475,6 @@ def classify(image) -> FoodClassification | None:
     out = _interpreter.get_tensor(out_detail["index"])[0]  # type: ignore[union-attr]
 
     raw = np.asarray(out).reshape(-1)
-    # Dequantize integer outputs from a quantized model using the tensor's
-    # (scale, zero_point) params. Without this, raw uint8/int8 scores (0–255)
-    # skip straight to the softmax branch below and collapse to ~1.0 for the
-    # top class — defeating the food_min_confidence threshold and accepting
-    # low-quality predictions as if they were certain.
     if raw.dtype in (np.uint8, np.int8):
         q = out_detail.get("quantization") if hasattr(out_detail, "get") else None
         if isinstance(q, (tuple, list)) and len(q) == 2 and float(q[0]):
@@ -473,18 +482,7 @@ def classify(image) -> FoodClassification | None:
         else:
             raw = raw.astype(np.float32) / 255.0
 
-    flat = np.asarray(raw, dtype=np.float32).reshape(-1)
-    if flat.max() > 1.5 or flat.min() < 0:
-        x = flat - flat.max()
-        exp = np.exp(x)
-        probs = exp / exp.sum()
-    elif flat.max() <= 1.0 and flat.min() >= 0 and abs(float(flat.sum()) - 1.0) < 0.05:
-        probs = flat
-    else:
-        probs = flat / 255.0
-        total = float(probs.sum())
-        probs = probs / total if total > 0 else probs
-
+    probs = _scores_to_probs(raw)
     min_conf = float(TUNABLES.food_min_confidence)
     for idx in np.argsort(probs)[::-1][:12]:
         idx = int(idx)
@@ -506,3 +504,15 @@ def classify(image) -> FoodClassification | None:
 
     log.info("food classify: no mapped label above %.0f%% confidence", min_conf * 100)
     return None
+
+
+def classify(image) -> FoodClassification | None:
+    """Returns classification or None if no model / low confidence / no image."""
+    if image is None:
+        return None
+    if not _DICT:
+        load()
+    result = _classify_tflite(image)
+    if result is not None:
+        return result
+    return _classify_with_zero_shot(image)

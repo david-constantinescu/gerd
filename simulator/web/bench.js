@@ -69,10 +69,6 @@ function sendBattery() {
 batt.addEventListener("input", sendBattery);
 battLow.addEventListener("change", sendBattery);
 
-/* ---- hrv ------------------------------------------------------------- */
-$("#send-hrv").addEventListener("click", () =>
-  post("/api/hrv", { bpm: +$("#bpm").value, rmssd: +$("#rmssd").value }));
-
 /* ---- commands -------------------------------------------------------- */
 document.querySelectorAll(".cmd").forEach((el) => {
   el.addEventListener("click", () => post("/api/command", { command: el.dataset.cmd }));

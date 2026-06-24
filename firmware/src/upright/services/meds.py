@@ -133,6 +133,9 @@ class MedReminders:
         """Close reminder without logging taken."""
         self._pending.pop(name, None)
 
+    def pending_names(self) -> list[str]:
+        return list(self._pending.keys())
+
     def status_line(self) -> str:
         if self._pending:
             name = next(iter(self._pending))

@@ -68,6 +68,13 @@ def _prepare_data(fresh: bool, demo: bool) -> None:
         dst = SIM_DATA / name
         if src.exists() and (fresh or not dst.exists()):
             shutil.copy2(src, dst)
+    locales_src, locales_dst = REAL_DATA / "locales", SIM_DATA / "locales"
+    if locales_src.is_dir() and fresh:
+        if locales_dst.exists():
+            shutil.rmtree(locales_dst)
+        shutil.copytree(locales_src, locales_dst)
+    elif locales_src.is_dir() and not locales_dst.exists():
+        shutil.copytree(locales_src, locales_dst)
     # Seed the DB from the real one once (so demo history is visible), unless fresh.
     db_src, db_dst = REAL_DATA / "upright.db", SIM_DATA / "upright.db"
     if db_src.exists() and not db_dst.exists() and not fresh:

@@ -99,8 +99,10 @@ def test_start_ap_hardened_profile(monkeypatch):
     ok, _ = wifi.start_ap()
     assert ok is True
     flat = [" ".join(c) for c in calls]
-    assert any("device disconnect" in c for c in flat)  # freed the single radio
+    assert any("device disconnect" in c for c in flat)  # transiently freed the radio
     assert any("connection delete" in c for c in flat)  # recreated cleanly
+    # Must NOT persist autoconnect=no — that would trap the device offline.
+    assert not any("connection modify" in c and "autoconnect" in c for c in flat)
     add = next(c for c in calls if "add" in c)
     add_str = " ".join(add)
     for token in ("802-11-wireless.mode ap", "wifi-sec.proto rsn", "ccmp",
@@ -115,8 +117,48 @@ def test_active_wifi_cons_distinguishes_ap(monkeypatch):
 
     monkeypatch.setattr(wifi, "is_available", lambda: True)
     monkeypatch.setattr(wifi, "_run", lambda *a, **k: FakeProc())
+    monkeypatch.setattr(wifi, "_device_state", lambda: "connected")
+    monkeypatch.setattr(wifi, "current_ssid", lambda: "HomeNet")
     assert wifi.is_ap_active() is True       # setup AP connection present
-    assert wifi.is_client_connected() is True  # HomeNet is a non-AP wifi con
+    assert wifi.is_client_connected() is True
+
+
+def test_is_client_connected_rejects_connecting(monkeypatch):
+    monkeypatch.setattr(wifi, "is_available", lambda: True)
+    monkeypatch.setattr(wifi, "_device_state", lambda: "connecting (70)")
+    monkeypatch.setattr(wifi, "_active_wifi_cons", lambda: ["DIGI-Y7wu"])
+    assert wifi.is_client_connected() is False
+
+
+def test_has_usable_client_rejects_ap_gateway(monkeypatch):
+    monkeypatch.setattr(wifi, "is_client_connected", lambda: True)
+    monkeypatch.setattr(wifi, "wlan_ipv4", lambda: wifi.SETUP_AP_GATEWAY)
+    assert wifi.has_usable_client() is False
+
+
+def test_has_usable_client_accepts_lan_ip(monkeypatch):
+    monkeypatch.setattr(wifi, "is_client_connected", lambda: True)
+    monkeypatch.setattr(wifi, "wlan_ipv4", lambda: "192.168.1.50")
+    assert wifi.has_usable_client() is True
+
+
+def test_qr_image_fit_dark_bg_inverts_for_oled():
+    normal = netinfo.qr_image_fit("http://upright.local/", 80, dark_bg=False)
+    inverted = netinfo.qr_image_fit("http://upright.local/", 80, dark_bg=True)
+    assert normal is not None and inverted is not None
+    assert normal.size == inverted.size
+    # Inverted: white quiet zone becomes black — fewer bright pixels overall.
+    bright_normal = sum(1 for p in normal.getdata() if p[0] > 200)
+    bright_inv = sum(1 for p in inverted.getdata() if p[0] > 200)
+    assert bright_inv < bright_normal
+    # But modules are now white — some bright pixels remain (the scannable pattern).
+    assert bright_inv > 500
+
+
+def test_wifi_qr_payload_uses_setup_password():
+    p = provisioning.wifi_qr_payload()
+    assert wifi.SETUP_AP_PASSWORD in p
+    assert "softhoarders" in p
 
 
 def test_wifi_qr_payload_format_and_escaping():
@@ -135,7 +177,7 @@ def test_provisioning_setup_url():
 def test_provisioning_tick_brings_ap_up_when_offline(monkeypatch):
     calls = []
     monkeypatch.setattr(wifi, "is_available", lambda: True)
-    monkeypatch.setattr(wifi, "is_client_connected", lambda: False)
+    monkeypatch.setattr(wifi, "has_usable_client", lambda: False)
     monkeypatch.setattr(wifi, "is_ap_active", lambda: False)
     monkeypatch.setattr(wifi, "start_ap", lambda: (calls.append("up") or (True, "up")))
     provisioning._tick()
@@ -145,7 +187,7 @@ def test_provisioning_tick_brings_ap_up_when_offline(monkeypatch):
 def test_provisioning_tick_drops_ap_when_connected(monkeypatch):
     calls = []
     monkeypatch.setattr(wifi, "is_available", lambda: True)
-    monkeypatch.setattr(wifi, "is_client_connected", lambda: True)
+    monkeypatch.setattr(wifi, "has_usable_client", lambda: True)
     monkeypatch.setattr(wifi, "is_ap_active", lambda: True)
     monkeypatch.setattr(wifi, "stop_ap", lambda: (calls.append("down") or (True, "down")))
     provisioning._tick()

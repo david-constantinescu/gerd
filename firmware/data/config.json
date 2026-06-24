@@ -19,10 +19,15 @@
   "sleep_window_start": "23:00",
   "sleep_window_end": "07:00",
   "sleep_pre_stillness_minutes": 10.0,
+  "sleep_wake_movement_minutes": 2.0,
+  "sleep_stillness_pitch_deg": 3.0,
+  "sleep_stillness_roll_std_deg": 2.0,
+  "sleep_window_required": false,
+  "sleep_lying_flat_shortcut_minutes": 5.0,
   "sleep_max_nudges": 3,
   "sleep_nudge_gap_seconds": 300.0,
   "wear_side": "left",
-  "food_min_confidence": 0.2,
+  "food_min_confidence": 0.12,
   "language": "en",
   "demo_mode": false
 }

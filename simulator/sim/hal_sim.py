@@ -185,6 +185,12 @@ def _make_camera(dev: SimDevice):
         return dev.get_camera_frame(width, height)
 
     def capture_with_warmup(retries=2):
+        # Bench uploads are still images at arbitrary resolution — use the
+        # original pixels for classification (resize only inside TFLite).
+        with dev._camera_lock:
+            img = dev._camera_img
+        if img is not None:
+            return img.convert("RGB")
         return dev.get_camera_frame(640, 480)
 
     class CameraPreview:
@@ -311,5 +317,9 @@ def install(dev: SimDevice) -> None:
         dev.booted.set()
 
     manager_mod.ModeManager.__init__ = _init
+
+    from . import wifi_sim
+
+    wifi_sim.install(dev)
 
     log.info("sim HAL installed")

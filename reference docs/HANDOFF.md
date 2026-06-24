@@ -24,7 +24,7 @@ Features:
   stay upright. (See §4 — this was just made to actually work.)
 - **Sleep position** tracking with vibration nudges when you roll onto your
   right/back/front.
-- **HRV / stress** via a MAX30102.
+- **Posture** via MPU6050 IMU (no heart-rate sensor on this hardware revision).
 - **Medication reminders** with button-press acknowledgment.
 - **Local Flask PWA** dashboard at `http://<hostname>.local`, plus first-time
   Wi-Fi onboarding via an on-screen QR (see §5).

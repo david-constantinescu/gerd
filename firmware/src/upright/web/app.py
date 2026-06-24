@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 import json
+import time
 import zipfile
 from dataclasses import asdict
 from datetime import datetime
@@ -210,20 +211,69 @@ def api_live():
         row = db._conn.execute(
             "SELECT ts, pitch, roll, state FROM posture_log ORDER BY ts DESC LIMIT 1"
         ).fetchone()
+        sleep_row = db._conn.execute(
+            "SELECT score FROM sleep_log ORDER BY id DESC LIMIT 1"
+        ).fetchone()
     posture = (
         {"ts": row[0], "pitch": row[1], "roll": row[2], "state": row[3]}
         if row
         else None
     )
+    meal_timer = ""
+    if last_meal:
+        window_s = float(last_meal.get("window_s") or TUNABLES.post_meal_default_hours * 3600)
+        elapsed = time.time() - last_meal["ts"]
+        left = max(0.0, window_s - elapsed)
+        if left > 0:
+            meal_timer = f"{int(left // 3600)}h {int((left % 3600) // 60):02d}m"
+    pending = _pending_medications(db)
     db.close()
     return jsonify(
         {
             "posture": posture,
             "events": events,
             "last_meal": last_meal,
+            "meal_timer": meal_timer,
+            "sleep_score": sleep_row[0] if sleep_row else None,
+            "battery_pct": None,
+            "fsm_state": posture["state"] if posture else "idle",
+            "pending_meds": pending,
             "now": datetime.now().isoformat(),
         }
     )
+
+
+def _pending_medications(db: Logger) -> list[dict]:
+    now = datetime.now()
+    today_start = datetime.combine(now.date(), datetime.min.time()).timestamp()
+    with db._lock:  # noqa: SLF001
+        rows = db._conn.execute(
+            "SELECT name, dose, time FROM medications WHERE enabled=1"
+        ).fetchall()
+        ack_rows = db._conn.execute(
+            "SELECT payload FROM events WHERE kind='med_acknowledged' AND ts >= ?",
+            (today_start,),
+        ).fetchall()
+    acked = set()
+    for (raw,) in ack_rows:
+        try:
+            acked.add(json.loads(raw or "{}").get("name"))
+        except json.JSONDecodeError:
+            pass
+    pending: list[dict] = []
+    for name, dose, t_str in rows:
+        if name in acked:
+            continue
+        try:
+            hh, mm = (int(x) for x in t_str.split(":"))
+            due = datetime.combine(now.date(), datetime.min.time()).replace(
+                hour=hh, minute=mm
+            )
+        except ValueError:
+            continue
+        if now >= due:
+            pending.append({"name": name, "dose": dose or ""})
+    return pending
 
 
 @app.post("/api/device/command")
@@ -279,11 +329,55 @@ def api_log_symptom():
     return jsonify({"ok": True})
 
 
+@app.post("/api/log/calibrate")
+def api_log_calibrate():
+    db = _db()
+    db.push_inbox("calibrate", {})
+    db.close()
+    return jsonify({"ok": True})
+
+
 @app.post("/api/log/water")
 def api_log_water():
     db = _db()
     db.event_now("water", {})
     db.push_inbox("water", {})
+    db.close()
+    return jsonify({"ok": True})
+
+
+@app.post("/api/log/food-photo")
+def api_log_food_photo():
+    import base64
+
+    notes = ""
+    image_b64 = ""
+    if request.content_type and "multipart/form-data" in request.content_type:
+        notes = (request.form.get("notes") or "").strip()
+        f = request.files.get("image")
+        if f:
+            image_b64 = base64.b64encode(f.read()).decode("ascii")
+    else:
+        data = request.get_json(silent=True) or {}
+        notes = str(data.get("notes", ""))
+        image_b64 = str(data.get("image_b64", ""))
+    if not image_b64:
+        return jsonify({"ok": False, "error": "no image"}), 400
+    db = _db()
+    db.push_inbox("food_photo", {"image_b64": image_b64, "notes": notes})
+    db.close()
+    return jsonify({"ok": True, "queued": True})
+
+
+@app.post("/api/medications/ack")
+def api_medications_ack():
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("name", "")).strip()
+    if not name:
+        return jsonify({"ok": False, "error": "name required"}), 400
+    db = _db()
+    db.event_now("med_acknowledged", {"name": name})
+    db.push_inbox("med_ack", {"name": name})
     db.close()
     return jsonify({"ok": True})
 
@@ -377,12 +471,14 @@ def api_medications():
                    VALUES (?, ?, ?, ?, 1)""",
                 (data["name"], data.get("dose", ""), data["time"], data.get("frequency", "daily")),
             )
+        db.push_inbox("meds_changed", {})
         db.close()
         return jsonify({"ok": True})
     if request.method == "DELETE":
         med_id = int(request.args.get("id", 0))
         with db._lock:  # noqa: SLF001
             db._conn.execute("DELETE FROM medications WHERE id=?", (med_id,))
+        db.push_inbox("meds_changed", {})
         db.close()
         return jsonify({"ok": True})
     return jsonify({"ok": False}), 400
@@ -396,6 +492,9 @@ def api_settings():
         current.update({k: v for k, v in data.items() if k in current})
         Tunables(**current).save()
         reload_tunables()
+        from ..services.i18n import reload_locales
+
+        reload_locales()
         db = _db()
         db.push_inbox("config_reloaded", {})
         db.close()
@@ -409,7 +508,7 @@ def _wifi_change_allowed() -> bool:
     user physically joined, so there's no untrusted LAN to protect against."""
     from ..services import wifi as wifi_service
 
-    return is_authenticated() or not wifi_service.is_client_connected()
+    return is_authenticated() or not wifi_service.has_usable_client()
 
 
 @app.get("/api/wifi/status")
@@ -421,8 +520,8 @@ def api_wifi_status():
     info = netinfo.status()
     info["ssid"] = wifi_service.current_ssid()
     info["manageable"] = wifi_service.is_available()
-    info["connected"] = wifi_service.is_client_connected()
-    info["setup_mode"] = wifi_service.is_ap_active() or not wifi_service.is_client_connected()
+    info["connected"] = wifi_service.has_usable_client()
+    info["setup_mode"] = wifi_service.is_ap_active() or not wifi_service.has_usable_client()
     info["setup_ssid"] = wifi_service.SETUP_AP_SSID
     return jsonify(info)
 
@@ -526,6 +625,7 @@ def api_sleep():
 
 
 @app.route("/api/export.<fmt>")
+@require_login
 def api_export(fmt: str):
     db = _db()
     events = db.recent_events(limit=10000)
@@ -543,6 +643,7 @@ def api_export(fmt: str):
 
 
 @app.route("/backup.zip")
+@require_login
 def backup_zip():
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:

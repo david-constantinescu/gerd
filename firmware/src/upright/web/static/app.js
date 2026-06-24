@@ -41,7 +41,28 @@ async function refreshLive() {
       $("#posture-pct").textContent = Math.round(pct) + "%";
       $("#posture-bar").style.width = pct + "%";
       $("#pitch").textContent = d.posture.pitch.toFixed(1);
-      $("#state").textContent = d.posture.state;
+      $("#state").textContent = d.fsm_state || d.posture.state;
+    }
+    if ($("#meal-timer")) {
+      $("#meal-timer").textContent = d.meal_timer || "—";
+    }
+    if ($("#sleep-score")) {
+      $("#sleep-score").textContent =
+        d.sleep_score != null ? String(d.sleep_score) : "—";
+    }
+    if ($("#battery-pct")) {
+      $("#battery-pct").textContent =
+        d.battery_pct != null ? `${d.battery_pct}%` : "—";
+    }
+    const pm = $("#pending-med");
+    if (pm && d.pending_meds && d.pending_meds.length) {
+      const m = d.pending_meds[0];
+      pm.style.display = "block";
+      pm.innerHTML =
+        `Medication due: <b>${m.name}</b> ${m.dose || ""} ` +
+        `<button type="button" data-action="med-ack" data-name="${m.name}">Taken</button>`;
+    } else if (pm) {
+      pm.style.display = "none";
     }
     if ($("#timeline")) {
       $("#timeline").innerHTML = d.events.slice(0, 20).map((e) => {
@@ -114,6 +135,49 @@ async function logWater() {
   }
 }
 
+async function calibrate() {
+  try {
+    await j("/api/log/calibrate", { method: "POST" });
+    showToast("Calibration started on device");
+  } catch (e) {
+    showToast(e.message || String(e), true);
+  }
+}
+
+async function logFoodPhoto() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("image", file);
+    const notes = prompt("Meal notes (optional)");
+    if (notes !== null && notes) fd.append("notes", notes);
+    try {
+      const r = await fetch("/api/log/food-photo", { method: "POST", body: fd });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      showToast("Food photo queued for classification");
+      refreshLive();
+    } catch (e) {
+      showToast(e.message || String(e), true);
+    }
+  };
+  input.click();
+}
+
+async function ackMed(name) {
+  await j("/api/medications/ack", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  showToast("Medication acknowledged");
+  refreshLive();
+}
+
 async function handleDeviceCommand(cmd, payload = {}) {
   if (cmd === "meal") {
     const notes = prompt("Meal notes (optional)");
@@ -148,6 +212,8 @@ function bindClickDelegation() {
         if (action === "log-meal") await logMeal();
         else if (action === "log-symptom") await logSymptom();
         else if (action === "log-water") await logWater();
+        else if (action === "log-food-photo") await logFoodPhoto();
+        else if (action === "med-ack") await ackMed(actionBtn.dataset.name);
       } catch (e) {
         showToast(e.message || String(e), true);
       }
@@ -309,6 +375,13 @@ async function loadReports() {
     .join("");
   $("#trends").innerHTML =
     `<table class="mini-table"><thead><tr><th>Day</th><th>Meals</th><th>Sx</th><th>Food</th></tr></thead><tbody>${dayRows || "<tr><td colspan=4>no data</td></tr>"}</tbody></table>`;
+  const links = stats.meal_symptom_links || [];
+  const corr = links.length
+    ? `<ul>${links.map((l) =>
+        `<li><b>${l.food}</b> (${l.food_risk}) → ${l.symptom_type} sev${l.severity} after ${l.delay_min}m</li>`
+      ).join("")}</ul>`
+    : "<p class='muted'>No HIGH-risk meal → symptom pairs in the last 7 days.</p>";
+  if ($("#correlation")) $("#correlation").innerHTML = corr;
 }
 
 async function initSettings() {
@@ -373,18 +446,33 @@ async function addMed() {
 async function initWifi() {
   const statusEl = $("#wifi-status");
   if (!statusEl) return;
+  const qr = $("#wifi-qr");
+  const hint = qr && qr.parentElement && qr.parentElement.querySelector(".hint");
   try {
     const s = await j("/api/wifi/status");
     const url = s.url || `http://${s.mdns || "upright.local"}/`;
-    statusEl.innerHTML =
-      `Connected to <b>${s.ssid || "—"}</b><br>` +
-      `Address: <b>${url}</b><br>` +
-      `IP: <b>${s.ip || "—"}</b>` +
-      (s.manageable ? "" : "<br><i>Wi-Fi switching not available on this host</i>");
-    const qr = $("#wifi-qr");
-    if (qr) qr.src = "/api/wifi/qr.png?t=" + Date.now();
+    if (s.setup_mode) {
+      statusEl.innerHTML =
+        `Setup mode — join <b>${s.setup_ssid || "UpRight-Setup"}</b> on your phone<br>` +
+        `Then open <b>${url}</b> to pick a network`;
+    } else {
+      statusEl.innerHTML =
+        `Connected to <b>${s.ssid || "—"}</b><br>` +
+        `Address: <b>${url}</b><br>` +
+        `IP: <b>${s.ip || "—"}</b>` +
+        (s.manageable ? "" : "<br><i>Wi-Fi switching not available on this host</i>");
+    }
+    if (qr) {
+      qr.hidden = false;
+      qr.onerror = () => {
+        qr.hidden = true;
+        if (hint) hint.textContent = `QR unavailable — open ${url} in your browser`;
+      };
+      qr.src = "/api/wifi/qr.png?url=" + encodeURIComponent(url) + "&t=" + Date.now();
+    }
   } catch (_) {
     statusEl.textContent = "network status unavailable";
+    if (qr) qr.hidden = true;
   }
 }
 
@@ -459,6 +547,8 @@ if (document.readyState === "loading") {
 window.logMeal = logMeal;
 window.logSymptom = logSymptom;
 window.logWater = logWater;
+window.calibrate = calibrate;
+window.logFoodPhoto = logFoodPhoto;
 window.addFood = addFood;
 window.addMed = addMed;
 window.delMed = delMed;

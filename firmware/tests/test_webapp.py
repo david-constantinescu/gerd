@@ -67,7 +67,7 @@ def test_wifi_requires_login_when_connected(client, monkeypatch):
     # Once on a real network, changing Wi-Fi needs login.
     from upright.services import wifi as wifi_service
 
-    monkeypatch.setattr(wifi_service, "is_client_connected", lambda: True)
+    monkeypatch.setattr(wifi_service, "has_usable_client", lambda: True)
     assert client.get("/api/wifi/scan").status_code == 401
     assert client.post("/api/wifi/connect", json={"ssid": "X"}).status_code == 401
 

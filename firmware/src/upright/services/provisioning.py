@@ -22,8 +22,8 @@ log = logging.getLogger("services.provisioning")
 # Give NetworkManager time to auto-connect to a known network at boot before we
 # decide the device is "unprovisioned" and raise the setup AP. Kept short so the
 # AP appears quickly when the saved network is out of range / wrong.
-_BOOT_GRACE_S = 12.0
-_CHECK_INTERVAL_S = 15.0
+_BOOT_GRACE_S = 8.0
+_CHECK_INTERVAL_S = 10.0
 
 # Cheap, cached "are we hosting the setup AP right now?" flag, refreshed by the
 # reconcile loop. The web captive-portal hook reads this on every request, so it
@@ -56,7 +56,7 @@ def wifi_qr_payload(ssid: str | None = None, password: str | None = None) -> str
 def state() -> dict:
     """Snapshot for the OLED Network screen / web."""
     return {
-        "connected": wifi.is_client_connected(),
+        "connected": wifi.has_usable_client(),
         "ap_active": wifi.is_ap_active(),
         "setup_ssid": wifi.SETUP_AP_SSID,
         "setup_password": wifi.SETUP_AP_PASSWORD,
@@ -65,12 +65,12 @@ def state() -> dict:
 
 
 def _tick() -> None:
-    """One reconcile step: AP up iff there's no client connection."""
+    """One reconcile step: AP up iff there's no usable client connection."""
     global _setup_mode
     if not wifi.is_available():
         _setup_mode = False
         return
-    if wifi.is_client_connected():
+    if wifi.has_usable_client():
         if wifi.is_ap_active():
             wifi.stop_ap()
         _setup_mode = False

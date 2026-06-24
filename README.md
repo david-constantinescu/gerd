@@ -18,7 +18,7 @@ Raspberry Pi Zero 2 W.
   the OLED.
 - **Sleep position** tracking with up to 3 vibration nudges per night when
   you roll onto your right side / back / front.
-- **HRV / stress** via a MAX30102 in the clip, pressed against the skin.
+- **Posture** via MPU6050 IMU on the waist clip.
 - **Medication reminders** with button-press acknowledgment.
 - **Local Flask PWA** dashboard reachable at `http://<hostname>.local` (mDNS)
   on your own Wi-Fi. First-time setup needs no app: with no network configured the

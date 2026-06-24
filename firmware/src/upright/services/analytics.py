@@ -99,7 +99,48 @@ def week_summary(db: Logger, days: int = 7) -> dict[str, Any]:
         "per_day": [
             {"date": d, **counts} for d, counts in sorted(per_day.items())
         ],
+        "meal_symptom_links": meal_symptom_correlation(db, days=days),
     }
+
+
+def meal_symptom_correlation(db: Logger, *, days: int = 7, window_h: float = 2.0) -> list[dict[str, Any]]:
+    """Symptoms that occurred within ``window_h`` hours after a HIGH-risk meal/food."""
+    since = _since(days)
+    window_s = window_h * 3600.0
+    with db._lock:  # noqa: SLF001
+        events = db._conn.execute(
+            "SELECT ts, kind, payload FROM events WHERE ts >= ? ORDER BY ts",
+            (since,),
+        ).fetchall()
+    triggers: list[tuple[float, str, str]] = []
+    links: list[dict[str, Any]] = []
+    for ts, kind, payload_raw in events:
+        try:
+            p = json.loads(payload_raw or "{}")
+        except json.JSONDecodeError:
+            p = {}
+        if kind in ("meal", "food_photo"):
+            risk = str(p.get("risk", "")).upper()
+            score = int(p.get("gerd_score", 0) or 0)
+            if risk == "HIGH" or score >= 70:
+                name = str(p.get("name") or p.get("notes") or "meal")
+                triggers.append((ts, name, risk or f"score {score}"))
+        elif kind == "symptom":
+            for t_ts, food, risk in triggers:
+                if 0 < ts - t_ts <= window_s:
+                    links.append(
+                        {
+                            "food": food,
+                            "food_risk": risk,
+                            "symptom_type": p.get("type", "?"),
+                            "severity": p.get("severity"),
+                            "delay_min": int((ts - t_ts) // 60),
+                            "meal_ts": t_ts,
+                            "symptom_ts": ts,
+                        }
+                    )
+                    break
+    return links[-20:]
 
 
 def oled_lines(summary: dict[str, Any]) -> list[str]:

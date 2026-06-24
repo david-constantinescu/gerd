@@ -101,7 +101,7 @@ def test_symptom_flow(mgr: ModeManager) -> None:
 
 def test_settings_calibrate(mgr: ModeManager) -> None:
     _open_main(mgr)
-    mgr.menu.index = 3
+    mgr.menu.index = 4  # Settings
     _select(mgr)
     assert mgr.menu.screen == "settings"
     mgr.menu.index = 0
@@ -112,7 +112,7 @@ def test_settings_calibrate(mgr: ModeManager) -> None:
 
 def test_med_info_done(mgr: ModeManager) -> None:
     _open_main(mgr)
-    mgr.menu.index = 2
+    mgr.menu.index = 3  # Medication
     _select(mgr)
     assert mgr.menu.screen == "med_info"
     _select(mgr)
@@ -157,11 +157,18 @@ def test_double_a_closes_from_main_menu(mgr: ModeManager) -> None:
     assert not mgr.menu.open
 
 
-def test_double_b_opens_main_from_watch(mgr: ModeManager) -> None:
+def test_double_b_quick_symptom_from_watch(mgr: ModeManager) -> None:
     mgr.menu.close()
     mgr._on_b_double(time.time())
-    assert mgr.menu.open
-    assert mgr.menu.screen == "main"
+    assert mgr.menu.screen == "flash"
+    assert "symptom" in mgr.menu.flash_message.lower() or mgr.menu.flash_message
+
+
+def test_water_menu_logs_event(mgr: ModeManager) -> None:
+    _open_main(mgr)
+    mgr.menu.index = 2  # Log Water
+    _select(mgr)
+    assert mgr.menu.screen == "flash"
 
 
 def test_bottom_single_opens_main_from_watch(mgr: ModeManager) -> None:
@@ -186,6 +193,22 @@ def test_double_a_dismisses_med_prompt(mgr: ModeManager) -> None:
     mgr._on_a_double(time.time())
     assert not mgr.menu.open
     assert mgr.menu.pending_med == ""
+
+
+def test_settings_network_screen(mgr: ModeManager) -> None:
+    _open_main(mgr)
+    mgr.menu.index = 4  # Settings
+    _select(mgr)
+    assert mgr.menu.screen == "settings"
+    mgr.menu.index = 2  # Network
+    _select(mgr)
+    assert mgr.menu.screen == "network"
+    mgr._refresh_net_info()
+    ctx = mgr._view_ctx()
+    assert ctx.get("net_qr_image") is not None
+    mgr._paint_now()
+    display = mgr.oled
+    assert display.show.called
 
 
 def test_menu_state_actions_match_screens() -> None:

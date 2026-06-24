@@ -14,7 +14,6 @@ _KNOWN: dict[int, str] = {
     0x41: "INA219?",
     0x44: "INA219?",
     0x45: "INA219?",
-    0x57: "MAX30102",
     0x68: "MPU6050",
     0x69: "MPU6050 AD0=1",
     0x6A: "LSM6DS3?",

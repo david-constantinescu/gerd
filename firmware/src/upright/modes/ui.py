@@ -7,6 +7,7 @@ from datetime import datetime
 
 from PIL import Image, ImageDraw
 
+from ..services.i18n import t
 from . import menu as menu_mod
 from . import ui_theme as theme
 from .menu import settings_items
@@ -114,13 +115,9 @@ def _watch_info_lines(ctx: dict) -> list[str]:
     if symptom:
         lines.append(f"Symptom {symptom[:18]}")
 
-    bpm = ctx.get("bpm", "--")
-    if bpm != "--":
-        rmssd = ctx.get("rmssd_text", "--")
-        hrv = f"HR {bpm}"
-        if rmssd != "--":
-            hrv += f"  HRV {rmssd}"
-        lines.append(hrv[:26])
+    water_n = ctx.get("water_today", 0)
+    if water_n:
+        lines.append(f"Water x{water_n}")
 
     return lines[:5]
 
@@ -144,7 +141,7 @@ def draw_watch_face(d: ImageDraw.ImageDraw, ctx: dict) -> None:
         theme.hr(d, 17, w)
         _draw_score_bar(d, 21, w, posture)
         d.text((4, 42), f"P {pitch:+.0f}° R {roll:+.0f}°", fill=theme._C_FG)
-        d.text((4, 54), "Straighten up!", fill=theme._C_WARN)
+        d.text((4, 54), t("watch.straighten"), fill=theme._C_WARN)
         y = 66
         for line in _watch_info_lines(ctx)[:2]:
             d.text((4, y), line, fill=theme._C_DIM)
@@ -185,11 +182,11 @@ def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     meal_at = ctx.get("meal_at_text", "—")
     pitch = ctx.get("pitch", 0.0)
 
-    d.text((4, 4), f"{now} POST-MEAL", fill=theme._C_ACCENT)
+    d.text((4, 4), f"{now} {t('watch.post_meal')}", fill=theme._C_ACCENT)
     _draw_battery(d, ctx, w)
     theme.hr(d, 18, w)
 
-    d.text((4, 22), "Upright timer left", fill=theme._C_DIM)
+    d.text((4, 22), t("watch.upright_timer"), fill=theme._C_DIM)
     d.text((4, 34), remaining, fill=theme._C_FG)
     theme.progress_bar(d, 4, 48, max(40, w - 8), 7, min(1.0, frac))
 
@@ -206,10 +203,11 @@ def draw_post_meal_watch(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
 def draw_main_menu(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
-    theme.title_bar(d, "MAIN MENU", w)
+    theme.title_bar(d, t("title.main_menu"), w)
     idx = int(ctx.get("menu_index", 0))
     y = 28
-    for i, (label, _) in enumerate(_MAIN_ITEMS):
+    for i, (label_key, _) in enumerate(_MAIN_ITEMS):
+        label = t(label_key)
         prefix = "> " if i == idx else "  "
         theme.menu_row(d, y, f"{prefix}{label}", w=w, selected=(i == idx))
         y += 18
@@ -218,12 +216,12 @@ def draw_main_menu(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
 def draw_meal_confirm(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
-    theme.title_bar(d, "LOG MEAL", w)
-    d.text((4, 28), "Log meal now?", fill=theme._C_FG)
+    theme.title_bar(d, t("title.log_meal"), w)
+    d.text((4, 28), t("confirm.meal"), fill=theme._C_FG)
     d.text((4, 44), f"Time: {datetime.now().strftime('%H:%M')}", fill=theme._C_DIM)
     idx = int(ctx.get("menu_index", 0))
-    theme.menu_row(d, 64, "> Yes" if idx == 0 else "  Yes", w=w, selected=(idx == 0))
-    theme.menu_row(d, 84, "> No" if idx == 1 else "  No", w=w, selected=(idx == 1))
+    theme.menu_row(d, 64, f"> {t('confirm.yes')}" if idx == 0 else f"  {t('confirm.yes')}", w=w, selected=(idx == 0))
+    theme.menu_row(d, 84, f"> {t('confirm.no')}" if idx == 1 else f"  {t('confirm.no')}", w=w, selected=(idx == 1))
 
 
 def _paste_camera_thumb(
@@ -385,11 +383,26 @@ def draw_analytics(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
 def draw_settings(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
-    theme.title_bar(d, "SETTINGS", w)
+    theme.title_bar(d, t("title.settings"), w)
     idx = int(ctx.get("menu_index", 0))
     y = 28
     items = settings_items()
-    for i, (label, _) in enumerate(items):
+    for i, (label_key, _) in enumerate(items):
+        label = t(label_key)
+        prefix = "> " if i == idx else "  "
+        theme.menu_row(d, y, f"{prefix}{label}", w=w, selected=(i == idx))
+        y += 18
+
+
+def draw_language(d: ImageDraw.ImageDraw, ctx: dict) -> None:
+    w, h = _wh(ctx)
+    theme.title_bar(d, t("title.language"), w)
+    idx = int(ctx.get("menu_index", 0))
+    y = 28
+    from .menu import LANGUAGE_OPTIONS
+
+    for i, (label_key, _) in enumerate(LANGUAGE_OPTIONS):
+        label = t(label_key)
         prefix = "> " if i == idx else "  "
         theme.menu_row(d, y, f"{prefix}{label}", w=w, selected=(i == idx))
         y += 18
@@ -413,7 +426,7 @@ def draw_network(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     img = ctx.get("_img")
     setup = ctx.get("net_mode") == "setup"
 
-    if qr is not None and img is not None:
+    if qr is not None and img is not None and min(qr.size) >= 16:
         qw, qh = qr.size
         # Online: leave a footer line free to print the IP (works without mDNS).
         top = 2 if setup else max(0, (h - qh) // 2 - 6)
@@ -432,7 +445,7 @@ def draw_network(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     if setup:
         theme.title_bar(d, "WIFI SETUP", w)
         d.text((4, 34), f"Join: {ctx.get('net_setup_ssid') or 'UpRight-Setup'}", fill=theme._C_FG)
-        d.text((4, 50), f"Pass: {ctx.get('net_setup_pass') or 'uprightsetup'}", fill=theme._C_DIM)
+        d.text((4, 50), f"Pass: {ctx.get('net_setup_pass') or 'softhoarders'}", fill=theme._C_DIM)
         d.text((4, 66), "Then open:", fill=theme._C_DIM)
         d.text((4, 80), str(ctx.get("net_setup_url") or "http://10.42.0.1/")[:24], fill=theme._C_FG)
     else:
@@ -454,7 +467,8 @@ def draw_about(d: ImageDraw.ImageDraw, ctx: dict) -> None:
 
 def draw_flash(d: ImageDraw.ImageDraw, ctx: dict) -> None:
     w, h = _wh(ctx)
-    msg = (ctx.get("menu_flash", "") or "")[:24]
+    raw = (ctx.get("menu_flash", "") or "")[:24]
+    msg = t(raw) if raw else ""
     d.text((4, h // 2 - 6), msg, fill=theme._C_FG)
 
 
@@ -549,6 +563,7 @@ _MENU_DRAWERS = {
     "med_ack": draw_med_ack,
     "med_info": draw_med_info,
     "settings": draw_settings,
+    "language": draw_language,
     "stats": draw_analytics,
     "network": draw_network,
     "about": draw_about,

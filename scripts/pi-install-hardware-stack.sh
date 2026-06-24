@@ -94,7 +94,7 @@ if [[ -d $INSTALL_DIR/firmware ]]; then
 
   log "pip: Pi HAL + optional display/camera libs"
   sudo -u "$INSTALL_USER" "$INSTALL_DIR/.venv/bin/pip" install -q \
-    flask gunicorn pillow numpy smbus2 spidev watchdog \
+    flask gunicorn pillow numpy segno smbus2 spidev watchdog \
     luma.oled luma.lcd luma.core \
     2>/dev/null || true
 

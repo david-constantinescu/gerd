@@ -11,7 +11,6 @@ POST /api/button            {"button":"a|b","pattern":"single|double|triple"}
 POST /api/encoder           {"action":"cw|ccw|click"}
 POST /api/posture           {"pitch":<deg>,"roll":<deg>}
 POST /api/battery           {"pct":0-100,"low":bool}
-POST /api/hrv               {"bpm":<n>,"rmssd":<ms>}
 POST /api/camera/frame      raw image bytes (image/*) or {"image":"<dataURL|base64>"}
 POST /api/command           {"command":"<inbox-kind>","payload":{...}}  (mirrors the PWA)
 """
@@ -120,18 +119,6 @@ def create_app(dev: SimDevice) -> Flask:
         dev.set_battery(data.get("pct"), data.get("low"))
         return jsonify({"ok": True, "pct": dev.battery_pct, "low": dev.battery_low})
 
-    @app.post("/api/hrv")
-    def api_hrv():
-        data = request.get_json(silent=True) or {}
-        if dev.bus is None:
-            return jsonify({"ok": False, "error": "firmware not ready"}), 503
-        from upright.events import Event, EventType
-
-        dev.bus.publish(Event(EventType.HRV_SAMPLE, payload={
-            "bpm": data.get("bpm"), "rmssd": data.get("rmssd"),
-        }))
-        return jsonify({"ok": True})
-
     @app.post("/api/camera/frame")
     def api_camera_frame():
         img = _read_image(request)
@@ -163,6 +150,36 @@ def create_app(dev: SimDevice) -> Flask:
     @app.get("/api/health")
     def api_health():
         return jsonify({"ok": True, "booted": dev.booted.is_set()})
+
+    @app.get("/api/wifi/sim")
+    def api_wifi_sim():
+        return jsonify({
+            "mode": getattr(dev, "wifi_mode", "offline"),
+            "client_ssid": getattr(dev, "wifi_client_ssid", None),
+            "client_ip": getattr(dev, "wifi_client_ip", None),
+            "scan": list(getattr(dev, "wifi_scan", [])),
+        })
+
+    @app.post("/api/wifi/sim/connect")
+    def api_wifi_sim_connect():
+        from upright.services import wifi as wifi_service
+
+        data = request.get_json(silent=True) or {}
+        ssid = str(data.get("ssid", "")).strip()
+        password = data.get("password")
+        ok, msg = wifi_service.connect(ssid, password)
+        return jsonify({"ok": ok, "message": msg, "mode": getattr(dev, "wifi_mode", "offline")})
+
+    @app.post("/api/wifi/sim/offline")
+    def api_wifi_sim_offline():
+        from upright.services import provisioning, wifi as wifi_service
+
+        if wifi_service.is_ap_active():
+            wifi_service.stop_ap()
+        dev.wifi_mode = "offline"
+        dev.wifi_client_ssid = None
+        provisioning._tick()
+        return jsonify({"ok": True, "mode": dev.wifi_mode})
 
     return app
 

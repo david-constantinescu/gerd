@@ -11,6 +11,7 @@ import math
 import os
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -28,6 +29,7 @@ from ..hal.display import Display
 from ..services import analytics as analytics_service
 from ..services import demo_seed
 from ..services.alerts import AlertManager
+from ..services.i18n import reload_locales, t
 from ..services.logger import Logger
 from ..services.meds import MedReminders
 from ..services.sleep import SleepTracker
@@ -48,8 +50,6 @@ class Context:
     state: State = State.BOOTING
     pitch: float = 0.0
     roll: float = 0.0
-    bpm: float | None = None
-    rmssd: float | None = None
     battery_pct: int = 100
     battery_low: bool = False
     battery_source: str = "unknown"
@@ -98,6 +98,8 @@ class ModeManager:
         self._pitch_display: float | None = None
         self._battery_low_since = 0.0
         self._lying_since: float = 0.0
+        self._roll_samples: deque[float] = deque(maxlen=60)
+        self._moving_since: float = 0.0
         self._display_demo = os.environ.get("UPRIGHT_DISPLAY_DEMO", "").lower() in (
             "1",
             "true",
@@ -183,8 +185,6 @@ class ModeManager:
         self.ctx.posture_pct = max(
             0.0, 100.0 - adjusted * TUNABLES.posture_pct_slope
         )
-        self.ctx.bpm = 68.0 + 5.0 * math.sin(t / 12.0)
-        self.ctx.rmssd = 40.0 + 10.0 * math.cos(t / 15.0)
         self.ctx.battery_pct = 87
         self.ctx.battery_low = False
         self.ctx.battery_source = "demo"
@@ -209,9 +209,15 @@ class ModeManager:
         )
 
         if self.ctx.state == State.SLEEPING:
+            self._roll_samples.append(self.ctx.roll)
             self.sleep.sample(self.ctx.roll)
+            if self._is_still():
+                self._moving_since = 0.0
+            elif self._moving_since == 0.0:
+                self._moving_since = time.time()
             return
 
+        self._roll_samples.append(self.ctx.roll)
         lying = abs(self.ctx.pitch) >= TUNABLES.lying_flat_deg
         if lying:
             if self._lying_since == 0.0:
@@ -256,7 +262,7 @@ class ModeManager:
             self.alerts.reset("slouch")
 
         # still-since for sleep onset detection
-        if abs(self.ctx.pitch) < 3.0:
+        if self._is_still():
             if self.ctx.still_since == 0.0:
                 self.ctx.still_since = time.time()
         else:
@@ -264,11 +270,24 @@ class ModeManager:
 
         self.db.posture(self.ctx.pitch, self.ctx.roll, self.ctx.state.value)
 
-    def _handle_hrv(self, ev: Event) -> None:
-        if TUNABLES.demo_mode:
-            return
-        self.ctx.bpm = ev.payload.get("bpm")
-        self.ctx.rmssd = ev.payload.get("rmssd")
+    def _roll_std(self) -> float:
+        if len(self._roll_samples) < 5:
+            return 999.0
+        vals = list(self._roll_samples)
+        mean = sum(vals) / len(vals)
+        var = sum((v - mean) ** 2 for v in vals) / len(vals)
+        return math.sqrt(var)
+
+    def _is_still(self) -> bool:
+        pitch_ok = abs(self.ctx.pitch) < TUNABLES.sleep_stillness_pitch_deg
+        roll_ok = self._roll_std() < TUNABLES.sleep_stillness_roll_std_deg
+        return pitch_ok and roll_ok
+
+    def _is_lying_still(self) -> bool:
+        return (
+            abs(self.ctx.pitch) >= TUNABLES.lying_flat_deg
+            and self._roll_std() < TUNABLES.sleep_stillness_roll_std_deg
+        )
 
     def _handle_power(self, ev: Event) -> None:
         was_low = self.ctx.battery_low
@@ -375,7 +394,7 @@ class ModeManager:
             return
         if not self.menu.open:
             if self.ctx.state in (State.IDLE, State.POST_MEAL):
-                self.menu.open_main(now)
+                self._quick_symptom(now)
             return
         if self.menu.screen == "food_photo":
             self._capture_food(now)
@@ -412,6 +431,7 @@ class ModeManager:
             "settings": "main",
             "stats": "settings",
             "network": "settings",
+            "language": "settings",
             "about": "main",
             "food_analysing": "food_photo",
         }
@@ -436,11 +456,7 @@ class ModeManager:
         """
         from ..services import netinfo, provisioning, wifi
 
-        ip = netinfo.lan_ip()
-        ap_active = wifi.is_ap_active()
-        # "online" = associated to a real network with a usable LAN IP (the AP's
-        # own 10.42.x gateway doesn't count).
-        online = (not ap_active) and ip is not None and not ip.startswith("10.42.")
+        online = wifi.has_usable_client()
 
         info = netinfo.status()
         info["ssid"] = wifi.current_ssid()
@@ -449,14 +465,18 @@ class ModeManager:
         try:
             if online:
                 url = info.get("url") or netinfo.dashboard_url()
-                self._net_qr = netinfo.qr_image_fit(url, max(40, side - 8), border=2, error="l")
+                self._net_qr = netinfo.qr_image_fit(
+                    url, max(40, side - 8), border=2, error="l", dark_bg=True
+                )
             else:
                 info["setup_ssid"] = wifi.SETUP_AP_SSID
                 info["setup_pass"] = wifi.SETUP_AP_PASSWORD
                 info["setup_url"] = provisioning.setup_url()
                 payload = provisioning.wifi_qr_payload()
                 # leave a footer line for the "join, then open …" hint
-                self._net_qr = netinfo.qr_image_fit(payload, max(40, side - 20), border=2, error="l")
+                self._net_qr = netinfo.qr_image_fit(
+                    payload, max(40, side - 20), border=2, error="l", dark_bg=True
+                )
         except Exception as e:  # pragma: no cover - segno/runtime specific
             log.warning("QR render failed: %s", e)
             self._net_qr = None
@@ -470,6 +490,10 @@ class ModeManager:
         elif action == "symptom":
             self.menu.screen = "symptom_severity"
             self.menu.index = 0
+        elif action == "water":
+            self.db.event_now("water", {"source": "device"})
+            self.bus.publish(Event(EventType.WATER_LOGGED, payload={}))
+            self.menu.flash(t("flash.water_logged"), now, seconds=2.0)
         elif action == "med":
             self.menu.screen = "med_info"
             self.menu.index = 0
@@ -478,7 +502,6 @@ class ModeManager:
             self.menu.index = 0
         elif action == "sleep":
             self.menu.close()
-            self.sleep.begin_night()
             self._transition(State.PRE_SLEEP)
         elif action == "about":
             self.menu.screen = "about"
@@ -494,26 +517,35 @@ class ModeManager:
         elif action == "stats":
             self.menu.screen = "stats"
             self.menu.index = 0
+        elif action == "stats_done":
+            self._menu_back()
         elif action == "network":
             self._refresh_net_info()
             self.menu.screen = "network"
             self.menu.index = 0
         elif action == "network_done":
             self._menu_back()
+        elif action == "language":
+            self.menu.screen = "language"
+            self.menu.index = 0 if TUNABLES.language != "ro" else 1
+        elif action == "lang_en":
+            self._set_language("en", now)
+        elif action == "lang_ro":
+            self._set_language("ro", now)
         elif action == "demo_enter":
             try:
                 demo_seed.enter_demo(self.db)
                 self._demo_anim_start = time.time()
                 self.meds._refresh_schedule()
                 reload_tunables()
-                self.menu.flash("Demo week loaded", now, seconds=2.0)
+                self.menu.flash(t("flash.demo_loaded"), now, seconds=2.0)
             except OSError as e:
                 log.error("demo seed failed: %s", e)
-                self.menu.flash("Demo failed", now, seconds=2.0)
+                self.menu.flash(t("flash.demo_failed"), now, seconds=2.0)
         elif action == "demo_exit":
             demo_seed.exit_demo(self.db)
             reload_tunables()
-            self.menu.flash("Demo ended", now, seconds=2.0)
+            self.menu.flash(t("flash.demo_ended"), now, seconds=2.0)
         elif action == "meal_yes":
             self._log_meal()
             self.menu.screen = "food_photo"
@@ -568,6 +600,33 @@ class ModeManager:
         )
         self.menu.screen = "symptom_saved"
         self.menu.flash_until = now + 2.5
+
+    def _quick_symptom(self, now: float) -> None:
+        """Bottom double-tap on watch — log last/default symptom without menu."""
+        severity = max(1, self.menu.symptom_severity + 1)
+        type_idx = max(0, self.menu.symptom_type)
+        self._symptom_severity_label = SYMPTOM_SEVERITIES[severity - 1]
+        self._symptom_type_label = SYMPTOM_TYPES[type_idx]
+        self.db.event_now(
+            "symptom",
+            {"severity": severity, "type": self._symptom_type_label},
+        )
+        self.bus.publish(
+            Event(
+                EventType.SYMPTOM_LOGGED,
+                payload={"severity": severity, "type": self._symptom_type_label},
+            )
+        )
+        self.menu.open = True
+        self.menu.flash(t("flash.symptom_saved"), now, seconds=2.0)
+
+    def _set_language(self, lang: str, now: float) -> None:
+        TUNABLES.language = lang
+        TUNABLES.save()
+        reload_tunables()
+        reload_locales()
+        self.menu.flash(t("flash.language_changed"), now, seconds=2.0)
+        self._menu_back()
 
     def _capture_food(self, now: float) -> None:
         from ..hal.camera import capture_with_warmup
@@ -678,10 +737,27 @@ class ModeManager:
             elif kind == "calibrate":
                 self._transition(State.CALIBRATING)
             elif kind == "config_reloaded":
+                reload_tunables()
+                reload_locales()
                 self.bus.publish(Event(EventType.CONFIG_RELOADED))
+            elif kind == "meds_changed":
+                self.meds._refresh_schedule()
+            elif kind == "food_photo":
+                b64 = payload.get("image_b64")
+                if b64:
+                    import base64
+                    import io
+
+                    from PIL import Image
+
+                    try:
+                        img = Image.open(io.BytesIO(base64.b64decode(b64))).convert("RGB")
+                        self._log_meal(notes=payload.get("notes", "phone"))
+                        self._run_food_photo(img)
+                    except (OSError, ValueError) as e:
+                        log.warning("food_photo inbox decode failed: %s", e)
             elif kind == "cmd_sleep":
                 self.menu.close()
-                self.sleep.begin_night()
                 self._transition(State.PRE_SLEEP)
             elif kind == "cmd_open_menu":
                 self.menu.open_main(time.time())
@@ -699,7 +775,8 @@ class ModeManager:
                 reload_tunables()
             elif kind == "cmd_idle":
                 self.menu.close()
-                if self.ctx.state not in (State.IDLE, State.POST_MEAL):
+                self.ctx.meal_started_at = 0.0
+                if self.ctx.state != State.IDLE:
                     self._transition(State.IDLE)
             elif kind == "cmd_symptom":
                 self.db.event_now(
@@ -710,23 +787,57 @@ class ModeManager:
                     },
                 )
 
-    # -------------------------------------------------- sleep entry
+    # -------------------------------------------------- sleep
 
-    def _maybe_enter_sleep(self) -> None:
-        if self.ctx.state != State.IDLE:
-            return
+    def _in_sleep_window(self) -> bool:
         now = datetime.now().time()
         start = datetime.strptime(TUNABLES.sleep_window_start, "%H:%M").time()
         end = datetime.strptime(TUNABLES.sleep_window_end, "%H:%M").time()
-        in_window = (start <= now) or (now <= end) if start > end else (start <= now <= end)
-        if not in_window:
+        if start > end:
+            return now >= start or now <= end
+        return start <= now <= end
+
+    def _stillness_threshold_s(self) -> float:
+        if self._is_lying_still():
+            return TUNABLES.sleep_lying_flat_shortcut_minutes * 60.0
+        return TUNABLES.sleep_pre_stillness_minutes * 60.0
+
+    def _maybe_enter_sleep(self) -> None:
+        if self.ctx.state not in (State.IDLE, State.PRE_SLEEP):
+            return
+        if TUNABLES.sleep_window_required and not self._in_sleep_window():
             return
         if self.ctx.still_since == 0.0:
             return
         stillness = time.time() - self.ctx.still_since
-        if stillness > TUNABLES.sleep_pre_stillness_minutes * 60:
-            self._transition(State.SLEEPING)
-            self.sleep.begin_night()
+        if stillness >= self._stillness_threshold_s():
+            self._enter_sleeping()
+
+    def _enter_sleeping(self) -> None:
+        self._transition(State.SLEEPING)
+        self.sleep.begin_night()
+        self.ctx.still_since = 0.0
+        self._moving_since = 0.0
+
+    def _maybe_exit_sleep(self) -> None:
+        if self.ctx.state != State.SLEEPING:
+            return
+        if self._moving_since == 0.0:
+            return
+        if time.time() - self._moving_since >= TUNABLES.sleep_wake_movement_minutes * 60.0:
+            self._end_sleep_night()
+
+    def _end_sleep_night(self) -> None:
+        report = self.sleep.end_night()
+        if report:
+            self.db.sleep_summary(**report)
+            self.menu.flash(
+                t("flash.sleep_morning", score=report.get("score", 0)),
+                time.time(),
+                seconds=3.0,
+            )
+        self._transition(State.IDLE)
+        self._moving_since = 0.0
 
     def _maybe_exit_post_meal(self) -> None:
         if self.ctx.state != State.POST_MEAL:
@@ -768,6 +879,15 @@ class ModeManager:
             if ctx.get("menu_screen") == "food_photo":
                 live = ctx.get("food_live_preview_image")
                 extra.append(id(live) if live is not None else 0)
+            if ctx.get("menu_screen") == "network":
+                extra.extend(
+                    [
+                        ctx.get("net_mode"),
+                        ctx.get("net_url"),
+                        ctx.get("net_ip"),
+                        id(ctx.get("net_qr_image")),
+                    ]
+                )
             return base + tuple(extra)
         return base
 
@@ -821,7 +941,6 @@ class ModeManager:
         )
         return {
             "display_demo": self._display_demo,
-            "bpm": f"{int(self.ctx.bpm)}" if self.ctx.bpm else "--",
             "battery_pct": self.ctx.battery_pct,
             "battery_low": self.ctx.battery_low,
             "battery_source": self.ctx.battery_source,
@@ -839,11 +958,12 @@ class ModeManager:
             "last_food_name": last_food_name,
             "last_food_risk": last_food_risk,
             "last_food_score": last_food_score,
-            "rmssd_text": (
-                f"{int(self.ctx.rmssd)}"
-                if self.ctx.rmssd is not None
-                else "--"
-            ),
+            "rmssd_text": "",
+            "sleep_week_avg": week.get("avg_sleep_score"),
+            "water_today": week.get("waters", 0),
+            "meal_timer_remaining": remaining,
+            "fsm_state": self.ctx.state.value,
+            "pending_med": next(iter(self.meds.pending_names()), ""),
             "date_text": datetime.now().strftime("%a %d %b"),
             "wear_side": TUNABLES.wear_side,
             "med_line": med_line,
@@ -860,7 +980,6 @@ class ModeManager:
             "net_qr_image": self._net_qr,
             "demo_mode": TUNABLES.demo_mode,
             "analytics_lines": analytics_lines,
-            "sleep_week_avg": week.get("avg_sleep_score"),
             "sleep_best_line": (
                 f"Best {week.get('best_sleep_night', '')} {week.get('best_sleep_score')}"
                 if week.get("best_sleep_score") is not None
@@ -939,12 +1058,18 @@ class ModeManager:
             log.info("display demo env — holding SYSTEM OK screen")
             self._transition(State.IDLE)
         while not stop.is_set():
-            ev = self.bus.get(timeout=0.2)
-            if ev is not None:
+            batch: list[Event] = []
+            first = self.bus.get(timeout=0.2)
+            if first is not None:
+                batch.append(first)
+            while len(batch) < 24:
+                extra = self.bus.get(timeout=0)
+                if extra is None:
+                    break
+                batch.append(extra)
+            for ev in batch:
                 if ev.type == EventType.POSTURE_SAMPLE:
                     self._handle_posture(ev)
-                elif ev.type == EventType.HRV_SAMPLE:
-                    self._handle_hrv(ev)
                 elif ev.type == EventType.POWER_SAMPLE:
                     self._handle_power(ev)
                 elif ev.type == EventType.BUTTON_PRESS:
@@ -955,7 +1080,10 @@ class ModeManager:
                     if TUNABLES.haptic_alerts_enabled:
                         self.alerts.motor.buzz_async("max")
                 elif ev.type == EventType.SHUTDOWN:
+                    stop.set()
                     break
+            if stop.is_set():
+                break
 
             now = time.time()
 
@@ -970,6 +1098,7 @@ class ModeManager:
                 self.oled.auto_blank_tick()
                 self._maybe_exit_post_meal()
                 self._maybe_enter_sleep()
+                self._maybe_exit_sleep()
                 if self.menu.idle_expired(now):
                     self.menu.close()
                 if self.menu.screen == "flash" and now > self.menu.flash_until:

@@ -61,7 +61,6 @@ SPI_DISPLAY_V_OFFSET = 0
 # --- I2C addresses ---------------------------------------------------------
 
 I2C_ADDR_MPU6050 = 0x68
-I2C_ADDR_MAX30102 = 0x57
 I2C_ADDR_OLED = 0x3C  # SH1106 modules sometimes use 0x3D
 
 
@@ -113,15 +112,20 @@ class Tunables:
     sleep_window_start: str = "23:00"
     sleep_window_end: str = "07:00"
     sleep_pre_stillness_minutes: float = 10.0
+    sleep_wake_movement_minutes: float = 2.0
+    sleep_stillness_pitch_deg: float = 3.0
+    sleep_stillness_roll_std_deg: float = 2.0
+    sleep_window_required: bool = False
+    sleep_lying_flat_shortcut_minutes: float = 5.0
     sleep_max_nudges: int = 3
     sleep_nudge_gap_seconds: float = 300.0
     wear_side: str = "left"  # left | right | center
 
     # Camera / TFLite. The bundled AIY Food V1 model has 2024 fine-grained
     # classes, so a correct top-1 for a real plate is typically 0.3–0.85 while
-    # non-food frames sit well below 0.15 — 0.20 accepts real food and rejects
-    # the empty-viewfinder/garbage case.
-    food_min_confidence: float = 0.20
+    # Non-food / empty frames normalize below ~0.08; real dishes land around
+    # 0.12–0.25 after the model's sparse score mass is renormalized.
+    food_min_confidence: float = 0.12
 
     # UI
     language: str = "en"

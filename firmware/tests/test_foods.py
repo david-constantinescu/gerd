@@ -2,6 +2,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pytest
 
 from upright import config
 from upright.services import foods
@@ -137,7 +138,7 @@ def test_classify_uses_zero_shot_image_and_candidate_labels():
     )
 
     with patch.object(foods, "_zero_shot_pipeline", fake_pipeline), patch.object(
-        foods, "_ensure_model", return_value=False
+        foods, "_classify_tflite", return_value=None
     ):
         result = foods.classify(fake_img)
 
@@ -174,7 +175,7 @@ def _run_classify_tflite(mock_interp):
         foods._input_details = mock_interp.get_input_details()
         foods._output_details = mock_interp.get_output_details()
         foods._labels = labels
-        result = foods.classify(fake_img)
+        result = foods._classify_tflite(fake_img)
     foods._interpreter = None
     return result
 
@@ -196,14 +197,49 @@ def test_classify_dequantizes_uint8_output():
     assert 0.70 <= result.confidence <= 0.85  # genuine prob, not bogus ~1.0
 
 
+def test_scores_to_probs_normalizes_sparse_dequantized_output():
+    """Real model output sums to <1 — renormalize by total mass."""
+    import numpy as np
+
+    flat = np.zeros(2024, dtype=np.float32)
+    flat[100] = 0.13
+    flat[200] = 0.09
+    flat[300] = 0.07
+    probs = foods._scores_to_probs(flat)
+    assert abs(float(probs.sum()) - 1.0) < 1e-5
+    assert float(probs[100]) > 0.20
+
+
 def test_classify_rejects_low_confidence_quantized():
     """A weak quantized prediction must fall below food_min_confidence → None."""
     foods.reload(config.FOODS_PATH)
     raw = np.zeros(len(_labels()), dtype=np.uint8)
-    # Spread mass so the top class sits at 45/255 ≈ 0.18, below the 0.20 floor.
-    for i in (_idx("Hamburger"), _idx("Sushi"), _idx("Ramen"), _idx("Udon")):
-        raw[i] = 45
-    raw[1] = 38
-    raw[2] = 37  # filler; total = 255, no class clears 0.20
+    # Fifteen equal bins → each ≈ 17/256 ≈ 6.6%, below the 12% floor.
+    for i in range(15):
+        raw[i + 3] = 17
     result = _run_classify_tflite(_mock_quantized_interp(raw, 1 / 255.0, 0))
     assert result is None
+
+
+def test_classify_real_food_photo(tmp_path):
+    """End-to-end TFLite inference on a real food photo (needs network once)."""
+    import urllib.request
+
+    from PIL import Image
+
+    fixture = tmp_path / "pizza.jpg"
+    if not fixture.exists():
+        try:
+            urllib.request.urlretrieve(
+                "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400",
+                fixture,
+            )
+        except OSError:
+            pytest.skip("could not download food test image")
+    foods.reload(config.FOODS_PATH)
+    img = Image.open(fixture).convert("RGB")
+    with patch.object(foods, "_classify_with_zero_shot", return_value=None):
+        result = foods.classify(img)
+    assert result is not None
+    assert result.risk in foods.VALID_RISKS
+    assert "pizza" in result.name.lower() or result.risk == "HIGH"
