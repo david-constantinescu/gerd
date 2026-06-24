@@ -141,9 +141,26 @@ installs cleanly and runs the model.
 
 ---
 
-## 5. Networking & first-time Wi-Fi — DONE in code, NOT yet working on hardware
+## 5. Networking & first-time Wi-Fi
 
-This is the **active problem area.** Read carefully.
+> **ROOT CAUSE FOUND & FIXED (2026-06-24, commit `5907a23`).** The device
+> "wouldn't connect to anything and the setup AP wouldn't broadcast" because
+> Raspberry Pi Imager configured Wi-Fi the **old ifupdown way** in
+> `/etc/network/interfaces` *and* NetworkManager was left `[ifupdown]
+> managed=false` — so **NM never managed `wlan0`**, and the entire nmcli-based
+> firmware Wi-Fi stack silently couldn't touch the radio. Fix: `install.sh` (and
+> a direct SD edit) strip the `wlan0` stanza from `/etc/network/interfaces`,
+> migrate the ifupdown Wi-Fi into an NM keyfile, and drop
+> `/etc/NetworkManager/conf.d/10-upright-manage-wifi.conf` (`managed=true`). Also
+> removed a `wifi.py` autoconnect-suppression trap (it persisted
+> `autoconnect=no` on saved networks → stranded the device offline forever), and
+> added a **boot diagnostic** (`scripts/upright-netdiag.sh` +
+> `upright-netdiag.service`) that writes `nmcli`/`iw`/`rfkill`/`dmesg` state to
+> `<boot>/upright-netdiag.txt` each boot — readable straight off the SD's FAT
+> partition, no SSH. **Still needs confirming on hardware:** boot the patched SD,
+> then read `bootfs/upright-netdiag.txt` to see the live radio state.
+
+Background on the design and the (now-fixed) symptoms follows.
 
 ### Design
 - The old always-on Wi-Fi hotspot was removed in favor of **mDNS** (avahi,
